@@ -10,6 +10,8 @@ st.write("PURTROPPO, PER RAGIONI A NOI IGNOTE, NEL DATASET MANCANO I RISULTATI D
 st.title("Database Motomondiale 2005-2017")
 st.header("Database completo da analizzare")
 st.write(data)
+
+#######
 st.header("Classifiche generali")
 col1, col2=st.columns(2)
 year=col1.select_slider("Inserire anno:", range(2005,2018), key=1)
@@ -53,6 +55,7 @@ else:
     d4=data.filter(pl.col("TRK").is_in(trk)).filter(pl.col("Category")=="MotoGP").filter(pl.col("Year")==year1).select(
         "Category", "Position", "Rider_Name", "Nationality", "Team_Name", "Bike","Time","Year", "TRK", "Track")
     st.write(d4)
+
 ########
 st.header("Analisi pilota per pilota")
 st.subheader("Piloti e punti conquistati")
