@@ -3,7 +3,6 @@ import altair as alt
 import polars as pl
 import datetime as dt
 import pandas as pd
-con1=st.container()
 data=pl.read_csv("https://raw.githubusercontent.com/nbugliar/motogp_regression/master/MotoGP_2005_2017.csv", null_values=[" ","NA","crash"])
 st.write("Nella colonna Position, dove manca il valore, è perché il pilota non ha terminato il Gran Premio.")
 st.write("PURTROPPO, PER RAGIONI A NOI IGNOTE, NEL DATASET MANCANO I RISULTATI DEL GP DI SPAGNA CLASSE 125cc. LE CLASSIFICHE DI QUELLA STAGIONE RISULTAERANNO QUINDI ALTERATE.")
@@ -61,12 +60,8 @@ else:
     st.write(d4)
 ########
 st.header("Analisi pilota per pilota")
-rider=st.multiselect("Selezionare pilota:", data["Rider_Name"].unique().to_list())
-for i in rider:
-    data_rider=data.filter(pl.col("Rider_Name")==i)
-    st.write(data_rider)
-else:
-    st.write(None)
+data_rider_points=data.group_by("Rider_Name","Year","Category","Bike").agg(pl.col("Points").sum())
+st.write(data_rider_points)
 #col1,col2,col3=st.columns(3)
 #track=col2.multiselect("Inserire Paese:", ["QAT","ARG","AME","SPA","ARA"])
 #cat=col3.multiselect("Inserire Categoria:", ["MotoGP","Moto2","Moto3","250cc","125cc"])
