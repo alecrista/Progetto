@@ -61,10 +61,12 @@ else:
     st.write(d4)
 ########
 st.header("Analisi pilota per pilota")
-rider_list=data["Rider_Name"].unique().to_list()
-rider=st.multiselect("Selezionare pilota:", rider_list)
-data_rider=data.filter(pl.col("Rider_Name").is_in(rider)).group_by("Rider_Name").agg(pl.col("Position").max())
-st.write(data_rider)
+rider=st.multiselect("Selezionare pilota:", data["Rider_Name"].unique().to_list())
+for i in rider:
+    data_rider=data.filter(pl.col("Rider_Name")==i)
+    st.write(data_rider)
+else:
+    st.write(None)
 #col1,col2,col3=st.columns(3)
 #track=col2.multiselect("Inserire Paese:", ["QAT","ARG","AME","SPA","ARA"])
 #cat=col3.multiselect("Inserire Categoria:", ["MotoGP","Moto2","Moto3","250cc","125cc"])
