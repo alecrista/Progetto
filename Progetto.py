@@ -66,6 +66,7 @@ col111, col112=st.columns(2)
 riders=col111.multiselect("Inserire piloti desiderati:", rider_list)
 category=col111.multiselect("Inserire Categoria desiderata:", cat_list)
 col112.write(data_rider_points.filter(pl.col("Rider_Name").is_in(riders), pl.col("Category").is_in(category)))
+##
 st.subheader("Piloti e velocità dura e pura")
 data_rider_speed=data.group_by("Rider_Name","Year","Category","Bike","Track_Condition").agg(
     pl.col("Avg_Speed").mean()).sort("Rider_Name", "Year", descending=True).filter(pl.col("Avg_Speed")>0) #Così rimuovo i dati assenti
@@ -77,7 +78,20 @@ st.write("Velocità media ti tutti i piloti:", mud)
 ic=[mud-1.96*mt.sqrt(var*n/(n-1)), mud+1.96*mt.sqrt(var*n/(n-1))]
 st.write("Intrvallo di confidenza a livello della velocità media, calcolato con l'opportuna formula mu +- 1.96 x sqrt(var x n/(n-1)):", ic)
 st.write("Procedimento utilizzato per escludere valori poco significativi o poco rilevanti.")
-st.write(data_rider_speed.filter(pl.col("Track_Condition")=="Dry").filter(pl.col("Avg_Speed")>=ic[0]).filter(pl.col("Avg_Speed")<=ic[1]))
+#Da allineare eventualmente con col1 e col2
+d_dry=data_rider_speed.filter(pl.col("Track_Condition")=="Dry").filter(pl.col("Avg_Speed")>=ic[0]).filter(pl.col("Avg_Speed")<=ic[1])
+d_dry_gen=d_dry.group_by("Year","Category").agg(pl.col("Avg_Speed").mean()).sort("Year","Category", descending=False)
+d_dry_gen=d_dry_gen.with_columns(
+    pl.when(pl.col("Category").is_in(["125cc","Moto3"]))
+    .then(pl.lit("Lightweigth"))
+    .otherwise(pl.when(pl.col("Category").is_in(["250cc","Moto2"]))
+               .then(pl.lit("Middleweigth"))
+               .otherwise(pl.lit("MotoGP")))
+               .alias("Cat"))
+st.write(d_dry_gen)
+chart_dry=alt.Chart(d_dry_gen).mark_line().encode(alt.X("Year"), alt.Y("Avg_Speed"), alt.Color("Cat"))
+#chart_dry=alt.Chart(d_dry_gen).mark_bar().encode(alt.X("Year:O"), alt.Y("Avg_Speed:Q"), xOffset="Cat:N", color="Cat:N")
+st.altair_chart(chart_dry, use_container_width=False)
 st.write("*Pista bagnata*")
 mud=data_rider_speed.filter(pl.col("Track_Condition")=="Wet").select(pl.col("Avg_Speed").mean())[0,0]#più conveniente di numpy
 var=data_rider_speed.filter(pl.col("Track_Condition")=="Wet").select(pl.col("Avg_Speed").var())[0,0] #idem della riga 70
@@ -87,7 +101,16 @@ ic=[mud-1.96*mt.sqrt(var*n/(n-1)), mud+1.96*mt.sqrt(var*n/(n-1))]
 st.write("Intrvallo di confidenza a livello della velocità media, calcolato con l'opportuna formula mu +- 1.96 x sqrt(var x n/(n-1)):", ic)
 st.write("Procedimento utilizzato per escludere valori poco significativi o poco rilevanti.")
 st.write(data_rider_speed.filter(pl.col("Track_Condition")=="Wet").filter(pl.col("Avg_Speed")>=ic[0]).filter(pl.col("Avg_Speed")<=ic[1]))
-
+##
+st.subheader("Relazioni tra piloti e circuiti specifici")
+st.write("*Piste orarie e antiorarie*")
+data_o=data.filter(pl.col("r_corners")>pl.col("l_corners"))
+data_a=data.filter(pl.col("r_corners")<pl.col("l_corners"))
+st.write(data_o)
+st.write(data_a)
+st.write("*Piste spagnole*")
+data_s=data.filter(pl.col("TRK").is_in(["SPA","VAL","ARA","CAT"]))
+st.write(data_s)
 ######
 st.header("Analisi per date")
 col01, col02, col03=st.columns(3)
