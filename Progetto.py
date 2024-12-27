@@ -87,7 +87,7 @@ riders=col111.multiselect("Inserire piloti desiderati:", rider_list)
 d_filt_1=data_rider_points.filter(pl.col("Rider_Name").is_in(riders))
 if len(riders)!=0:
     cat_list=sorted(d_filt_1.select(pl.col("Category").unique()).to_series().to_list())
-    category=col112.multiselect("Inserire Categoria desiderata:", cat_list)
+    category=col112.multiselect("Inserire Categoria desiderata:", cat_list, default=cat_list)
     d_filt_2=d_filt_1.filter(pl.col("Category").is_in(category))
     if len(category)!=0:
         year_list=sorted(d_filt_2.select(pl.col("Year").unique()).to_series().to_list())
@@ -107,7 +107,7 @@ if len(riders)!=0:
         )
 else:
     cat_list=sorted(data_rider_points.select(pl.col("Category").unique()).to_series().to_list())
-    category=col112.multiselect("Inserire Categoria desiderata:", cat_list)
+    category=col112.multiselect("Inserire Categoria desiderata:", cat_list, default=cat_list)
     d_filt_3=data_rider_points.filter(pl.col("Category").is_in(category))
     if len(category)!=0:
         year_list=sorted(d_filt_3.select(pl.col("Year").unique()).to_series().to_list())
@@ -149,7 +149,7 @@ chart_dry=alt.Chart(d_dry_gen).mark_line().encode(alt.X("Year"), alt.Y("Avg_Spee
 dry2.altair_chart(chart_dry, use_container_width=False)
 st.write("Svolgiamo un'analisi pilota per pilota.")
 dry1, dry2=st.columns(2)
-d_dry_rid=d_dry.group_by("Year","Category","Rider_Name","Bike").agg(pl.col("Avg_Speed").mean()).sort("Year","Category","Rider_Name", descending=False)
+d_dry_rid=d_dry.group_by("Year","Category","Rider_Name","Bike").agg(pl.col("Avg_Speed").mean()).sort("Year","Rider_Name","Category", descending=False)
 d_dry_rid=d_dry_rid.with_columns(
     pl.when(pl.col("Category").is_in(["125cc","Moto3"]))
     .then(pl.lit("Lightweigth"))
