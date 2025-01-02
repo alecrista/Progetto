@@ -252,7 +252,7 @@ else:
     if len(cons_cat_sel)==0:
         col2.write(d_cons_comp)
     else:
-        #filtra prima per categoria, poi filtra in base all'anno
+        #filtra prima per categoria, poi filtra in base all'anno.
         d_cons_comp
         cons_year_list=sorted(d_cons_comp["Cat"].unique().to_list())
         cons_year_sel=cons1.select_slider("Selezionare anno massimo di indagine", cons_year_list)
