@@ -77,9 +77,10 @@ else:
 ########
 ### ANALISI PER PILOTA ###
 st.header("Analisi per pilota")
+##
 st.subheader("Piloti e punti conquistati")
 st.write("Analisi effettuata sui piloti, non sulle categorie. Per cui selezionare prima il pilota e poi eventualmente la o le categorie")
-data_rider_points=data.group_by("Rider_Name","Year","Category","Bike").agg(pl.col("Points").sum()).sort("Rider_Name", "Year", descending=True)
+data_rider_points=data.group_by("Rider_Name","Year","Category").agg(pl.col("Points").sum(), pl.col("Bike").implode().list.unique()).sort("Rider_Name", "Year", descending=True)
 data_rider_points=data_rider_points.drop_nulls()
 col111, col112=st.columns(2)
 rider_list=sorted(data.select(pl.col("Rider_Name").unique()).drop_nulls().to_series().to_list())
@@ -175,7 +176,7 @@ else:
     dry2.write(data_dry_rid_year_cat)
     st.altair_chart(alt.Chart(data_dry_rid_year_cat).mark_line().encode(x="Year", y="Avg_Speed", color="Rider_Name"),
                 use_container_width=True)
-#
+### RIPETO LO STESSO PROCEDIMENTO ANCHE CON PISTA BAGNATA
 st.write("__*Pista bagnata*__")
 muw=data_rider_speed.filter(pl.col("Track_Condition")=="Wet").select(pl.col("Avg_Speed").mean())[0,0]#più conveniente di numpy
 st.write("Velocità media ti tutti i piloti:", muw)
@@ -193,13 +194,69 @@ wet1.write(d_wet_gen.sort("Year",descending=False).sort("Cat", descending=True))
 chart_wet=alt.Chart(d_wet_gen).mark_line().encode(alt.X("Year"), alt.Y("Avg_Speed"), alt.Color("Cat").scale(scheme="viridis"))
 wet2.altair_chart(chart_wet, use_container_width=False)
 st.write("Da notare che curiosamente, tra inizio 2012 e metà 2014, la classe leggera, probablimente perché ha corso meno gare e con un asfalto non completamente bagnato.")
-##
-st.subheader("Relazioni tra piloti e circuiti specifici")
-st.write("*Piste orarie e antiorarie*")
-data_o=data.filter(pl.col("r_corners")>pl.col("l_corners"))
-data_a=data.filter(pl.col("r_corners")<pl.col("l_corners"))
-st.write(data_o)
-st.write(data_a)
-st.write("*Piste spagnole*")
-data_s=data.filter(pl.col("TRK").is_in(["SPA","VAL","ARA","CAT"]))
-st.write(data_s)
+st.write("Svolgiamo un'analisi pilota per pilota.")
+wet1, wet2=st.columns(2)
+d_wet_rid=d_wet.group_by("Year","Category","Rider_Name","Bike").agg(pl.col("Avg_Speed").mean()).sort("Year","Rider_Name","Category", descending=False)
+d_wet_rid=d_wet_rid.with_columns(
+    pl.when(pl.col("Category").is_in(["125cc","Moto3"]))
+    .then(pl.lit("Lightweigth"))
+    .otherwise(pl.when(pl.col("Category").is_in(["250cc","Moto2"]))
+               .then(pl.lit("Middleweigth"))
+               .otherwise(pl.lit("MotoGP")))
+               .alias("Cat"))
+st.session_state.d_wet_rid=d_wet_rid
+rid_wet=sorted(st.session_state.d_wet_rid.select("Rider_Name").unique().to_series().to_list())
+rid_wet_sel=wet1.multiselect("Selezionare pilota desiderato", rid_wet)
+if len(rid_wet_sel)==0:
+    st.write("Inserire almeno un pilota")
+else:
+    data_wet_rid=d_wet_rid.filter(pl.col("Rider_Name").is_in(rid_wet_sel))
+    st.session_state.data_wet_rid=data_wet_rid
+    year_wet=sorted(st.session_state.data_wet_rid.select("Year").unique().to_series().to_list())
+    year_wet_sel=wet1.select_slider("Selezionare anno desiderato", year_wet, key=3)
+    data_wet_rid_year=data_wet_rid.filter(pl.col("Year")<=year_wet_sel)
+    st.session_state.data_wet_rid_year=data_wet_rid_year
+    cat_wet=sorted(st.session_state.data_wet_rid_year.select("Cat").unique().to_series().to_list())
+    cat_wet_sel=wet1.multiselect("Selezionare categoria desiderata", cat_wet, default=cat_wet, key=11)
+    data_wet_rid_year_cat=data_wet_rid_year.filter(pl.col("Cat").is_in(cat_wet_sel))
+    wet2.write(data_wet_rid_year_cat)
+    st.altair_chart(alt.Chart(data_wet_rid_year_cat).mark_line().encode(x="Year", y="Avg_Speed", color="Rider_Name"),
+                use_container_width=True)
+### SVOLGO LE STESSE ANALISI DI PRIMA MA CON I COSTRUTTORI.
+st.header("Analisi per costruttore")
+st.subheader("Costruttori e punti conquistati")
+data_cons=data.group_by("Year",pl.col("Bike").alias("Constructor"),"Category").agg(pl.col("Points").sum()).sort("Year","Constructor", descending=False) #Mi creo il dataset su cui far partire l'analisi
+st.session_state.data_cons=data_cons
+cons1, cons2=st.columns(2)
+#In cons1 metterò le opzioni di selezione, in cons2 il dataset filtrato.
+#cat_list=sorted(data_rider_points.select(pl.col("Category").unique()).to_series().to_list())
+cons_list=sorted(data_cons.select(pl.col("Constructor").unique()).drop_nulls().to_series().to_list())
+st.session_state.cons_list=cons_list #Dopo aver creato la lista la salvo nel server di Streamlit
+cons_sel=cons1.multiselect("Selezionare il costruttore desiderato", cons_list)
+if len(cons_sel)==0:
+    cons1.write("Inserire almeno un costruttore")
+else:
+    d_cons=data_cons.filter(pl.col("Constructor").is_in(cons_sel))
+    #Riunisco Moto2 e 250cc nella categoria "Middleweight" e Moto3 e 125cc nella categoria "Lightweigth"
+    d_cons_comp=d_cons.with_columns(
+        pl.when(pl.col("Category").is_in(["125cc","Moto3"])).then(pl.lit("Lightweigth")).otherwise(
+            pl.when(pl.col("Category").is_in(["250cc","Moto2"])).then(pl.lit("Middleweigth")).otherwise(pl.lit("MotoGP"))
+        ).alias("Cat")
+    )
+    cons2.write(d_cons_comp)
+    #creo quindi le liste di anni e categorie e le salvo al server di Streamlit
+    cons_cat_list=sorted(d_cons_comp["Cat"].unique().to_list())
+    st.session_state.cons_cat_list=cons_cat_list
+    #creo i comandi di selezione e le opzioni di rappresentazione
+    cons_cat_sel=cons1.multiselect("Selezionare categoria desiderata", cons_cat_list, default=cons_cat_list)
+    if len(cons_cat_sel)==0:
+        col2.write(d_cons_comp)
+    else:
+        #filtra prima per categoria, poi filtra in base all'anno
+        d_cons_comp
+        cons_year_list=sorted(d_cons_comp["Cat"].unique().to_list())
+        cons_year_sel=cons1.select_slider("Selezionare anno massimo di indagine", cons_year_list)
+        if len(cons_year_list)==1:
+            col2.write(d_cons_comp.select("Year", "Constructor", "Cat").filter(pl.col("Year")==cons_year_list[0], pl.col("Cat").is_in(cons_cat_sel)))
+        else:
+            col2.write(d_cons_comp.select("Year", "Constructor", "Cat").filter(pl.col("Year")==cons_year_sel, pl.col("Cat").is_in(cons_cat_sel)))
