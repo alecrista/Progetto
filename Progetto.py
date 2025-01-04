@@ -15,7 +15,16 @@ st.write(data)
 #######
 ### CLASSIFICHE GENERALI ###
 st.header("Classifiche generali")
+st.write("**Sistema di punteggio:**")
 col1, col2=st.columns(2)
+points=sorted(data.select(pl.col("Points").round().unique()).drop_nulls().to_series().to_list())
+points.remove(0)
+col1.write("Posizione")
+col2.write("Punti")
+for i in range(len(points)):
+    col1.write(i+1)
+    col2.write(points[-i-1])
+st.write("In caso di gara interrotta con meno di 2/3 della distanza di gara percorsi e gara non ripresa vengono assegnati punti dimezzati.")
 year=col1.select_slider("Inserire anno:", range(2005,2018), key=1)
 if year>2011:
     cat=col2.select_slider("Inserire Categoria:", ["MotoGP","Moto2","Moto3"])
@@ -95,7 +104,7 @@ if len(riders)!=0:
         year=col112.select_slider("Inserire anno limite:", year_list)
         col111.write(d_filt_2.sort("Year", "Rider_Name", descending=True).filter(pl.col("Year")<=year))
         col112.altair_chart(
-            alt.Chart(d_filt_2.filter(pl.col("Year")<=year)).mark_line().encode(alt.X("Year"), alt.Y("Points"), alt.Color("Rider_Name").scale(scheme="lightgreyred")),
+            alt.Chart(d_filt_2.filter(pl.col("Year")<=year)).mark_line().encode(alt.X("Year"), alt.Y("Points"), alt.Color("Rider_Name").scale(scheme="viridis")),
             use_container_width=True
         )
     else:
@@ -103,7 +112,7 @@ if len(riders)!=0:
         year=col112.select_slider("Inserire anno limite:", year_list)
         col111.write(d_filt_1.sort("Year", "Rider_Name", descending=True).filter(pl.col("Year")<=year))
         col112.altair_chart(
-            alt.Chart(d_filt_1.filter(pl.col("Year")<=year)).mark_line().encode(alt.X("Year"), alt.Y("Points"), alt.Color("Rider_Name").scale(scheme="lightgreyred")),
+            alt.Chart(d_filt_1.filter(pl.col("Year")<=year)).mark_line().encode(alt.X("Year"), alt.Y("Points"), alt.Color("Rider_Name").scale(scheme="viridis")),
             use_container_width=True
         )
 else:
@@ -115,7 +124,7 @@ else:
         year=col112.select_slider("Inserire anno limite:", year_list)
         col111.write(d_filt_3.sort("Year", "Rider_Name", descending=True).filter(pl.col("Year")<=year))
         col112.altair_chart(
-            alt.Chart(d_filt_3.filter(pl.col("Year")<=year)).mark_line().encode(alt.X("Year"), alt.Y("Points"), alt.Color("Rider_Name").scale(scheme="lightgreyred")),
+            alt.Chart(d_filt_3.filter(pl.col("Year")<=year)).mark_line().encode(alt.X("Year"), alt.Y("Points"), alt.Color("Rider_Name").scale(scheme="viridis")),
             use_container_width=True
         )
     else:
@@ -123,7 +132,7 @@ else:
         year=col112.select_slider("Inserire anno limite:", year_list)
         col111.write(data_rider_points.sort("Year", "Rider_Name", descending=True).filter(pl.col("Year")<=year))
         col112.altair_chart(
-            alt.Chart(data_rider_points.filter(pl.col("Year")<=year)).mark_line().encode(alt.X("Year"), alt.Y("Points"), alt.Color("Rider_Name").scale(scheme="lightgreyred")),
+            alt.Chart(data_rider_points.filter(pl.col("Year")<=year)).mark_line().encode(alt.X("Year"), alt.Y("Points"), alt.Color("Rider_Name").scale(scheme="viridis")),
             use_container_width=True
         )
 
@@ -178,7 +187,8 @@ else:
                 use_container_width=True)
 ### RIPETO LO STESSO PROCEDIMENTO ANCHE CON PISTA BAGNATA
 st.write("__*Pista bagnata*__")
-muw=data_rider_speed.filter(pl.col("Track_Condition")=="Wet").select(pl.col("Avg_Speed").mean())[0,0]#più conveniente di numpy
+muw=data_rider_speed.filter(pl.col("Track_Condition")=="Wet").select(pl.col("Avg_Speed").mean())[0,0]
+#più conveniente di numpy
 st.write("Velocità media ti tutti i piloti:", muw)
 d_wet=data_rider_speed.filter(pl.col("Track_Condition")=="Wet")
 d_wet_gen=d_wet.group_by("Year","Category").agg(pl.col("Avg_Speed").mean()).sort("Year","Category", descending=False)
@@ -222,41 +232,91 @@ else:
     wet2.write(data_wet_rid_year_cat)
     st.altair_chart(alt.Chart(data_wet_rid_year_cat).mark_line().encode(x="Year", y="Avg_Speed", color="Rider_Name"),
                 use_container_width=True)
-### SVOLGO LE STESSE ANALISI DI PRIMA MA CON I COSTRUTTORI.
+### SVOLGO ANALISI SIMILI MA CON I COSTRUTTORI. ###
 st.header("Analisi per costruttore")
-st.subheader("Costruttori e punti conquistati")
-data_cons=data.group_by("Year",pl.col("Bike").alias("Constructor"),"Category").agg(pl.col("Points").sum()).sort("Year","Constructor", descending=False) #Mi creo il dataset su cui far partire l'analisi
-st.session_state.data_cons=data_cons
-cons1, cons2=st.columns(2)
-#In cons1 metterò le opzioni di selezione, in cons2 il dataset filtrato.
-#cat_list=sorted(data_rider_points.select(pl.col("Category").unique()).to_series().to_list())
-cons_list=sorted(data_cons.select(pl.col("Constructor").unique()).drop_nulls().to_series().to_list())
-st.session_state.cons_list=cons_list #Dopo aver creato la lista la salvo nel server di Streamlit
-cons_sel=cons1.multiselect("Selezionare il costruttore desiderato", cons_list)
-if len(cons_sel)==0:
-    cons1.write("Inserire almeno un costruttore")
-else:
-    d_cons=data_cons.filter(pl.col("Constructor").is_in(cons_sel))
-    #Riunisco Moto2 e 250cc nella categoria "Middleweight" e Moto3 e 125cc nella categoria "Lightweigth"
-    d_cons_comp=d_cons.with_columns(
+st.subheader("Costruttori e punti medi")
+st.write("Per i costruttori, giusto per cambiare e volendo anche fare un'analisi un po' più precisa, ragioneremo con i punti medi per stagione")
+data_cons=data.group_by("Year",pl.col("Bike").alias("Constructor"),"Category").agg(pl.col("Points").mean()).sort("Year","Constructor", descending=False) #Mi creo il dataset su cui far partire l'analisi
+#Riunisco Moto2 e 250cc nella categoria "Middleweight" e Moto3 e 125cc nella categoria "Lightweigth"
+#creo quindi le liste di anni e categorie e le salvo al server di Streamlit
+d_cons=data_cons.with_columns(
         pl.when(pl.col("Category").is_in(["125cc","Moto3"])).then(pl.lit("Lightweigth")).otherwise(
             pl.when(pl.col("Category").is_in(["250cc","Moto2"])).then(pl.lit("Middleweigth")).otherwise(pl.lit("MotoGP"))
         ).alias("Cat")
-    )
-    cons2.write(d_cons_comp)
-    #creo quindi le liste di anni e categorie e le salvo al server di Streamlit
-    cons_cat_list=sorted(d_cons_comp["Cat"].unique().to_list())
-    st.session_state.cons_cat_list=cons_cat_list
-    #creo i comandi di selezione e le opzioni di rappresentazione
-    cons_cat_sel=cons1.multiselect("Selezionare categoria desiderata", cons_cat_list, default=cons_cat_list)
-    if len(cons_cat_sel)==0:
-        col2.write(d_cons_comp)
+    ).select("Year", "Constructor","Points","Cat").drop_nulls()
+st.session_state.d_cons=d_cons
+cons1, cons2=st.columns(2)
+#cons2.write(d_cons)
+#In cons1 metterò le opzioni di selezione, in cons2 il dataset filtrato.
+cons_list=sorted(d_cons.select(pl.col("Constructor").unique()).to_series().to_list())
+st.session_state.cons_list=cons_list
+cons_sel=cons1.multiselect("Inserire costruttore/i di interesse", cons_list)
+if len(cons_sel)==0:
+    st.write("Inserire almeno un costruttore.")
+else:
+    d_cons_filt=d_cons.filter(pl.col("Constructor").is_in(cons_sel))
+    c_year_list=sorted(d_cons_filt.select(pl.col("Year").unique()).to_series().to_list())
+    st.session_state.c_year_list=c_year_list
+    c_year_sel=cons1.select_slider("Inserire anno limite:", c_year_list, key=7)
+    d_cons_year=d_cons_filt.filter(pl.col("Year")<=c_year_sel)
+    c_cat_list=sorted(d_cons_year.select(pl.col("Cat").unique()).to_series().to_list())
+    st.session_state.c_cat_list=c_cat_list
+    c_cat_sel=cons1.multiselect("Inserire categoria desiderata:", c_cat_list, default=c_cat_list)
+    if len(c_cat_sel)!=0:
+        d_cons_year_cat=d_cons_year.filter(pl.col("Cat").is_in(c_cat_sel))
+        cons2.write(d_cons_year_cat)
+        st.write("**Confronto grafico per ogni categoria**")
+        for i in c_cat_sel:
+            d_cons_year_cat_filt=d_cons_year_cat.filter(pl.col("Cat")==str(i))
+            cons_ch_filt=alt.Chart(d_cons_year_cat_filt).mark_line().encode(alt.X("Year"), alt.Y("Points"), alt.Color("Constructor").scale(scheme="viridis"), alt.Text("Points"))
+            st.write(i)
+            st.altair_chart(cons_ch_filt, use_container_width=True)
     else:
-        #filtra prima per categoria, poi filtra in base all'anno.
-        d_cons_comp
-        cons_year_list=sorted(d_cons_comp["Cat"].unique().to_list())
-        cons_year_sel=cons1.select_slider("Selezionare anno massimo di indagine", cons_year_list)
-        if len(cons_year_list)==1:
-            col2.write(d_cons_comp.select("Year", "Constructor", "Cat").filter(pl.col("Year")==cons_year_list[0], pl.col("Cat").is_in(cons_cat_sel)))
-        else:
-            col2.write(d_cons_comp.select("Year", "Constructor", "Cat").filter(pl.col("Year")==cons_year_sel, pl.col("Cat").is_in(cons_cat_sel)))
+        cons2.write(d_cons_year)
+        st.write("**Confronto grafico per ogni categoria**")
+        st.write("Per il confronto grafico selezionare almeno una categoria")
+#########
+st.subheader("Costruttori e velocità (medie) massime")
+st.write("Quale costruttore ha mostrato più potenziale nel corso di stagione in ogni categoria? Lo scopriamo attraverso questa inusuale ma secondo me utile analisi:",
+"Andremo infatti a vedere le velocità medie (variabile Avg_Speed) più alte per ogni costruttore in una stagione per ogni categoria in cui esso ha partecipato.")
+data_cons_speed=data.group_by("Year",pl.col("Bike").alias("Constructor"),"Category").agg(pl.col("Avg_Speed").alias("Speed").max()
+                  ).sort("Constructor","Year","Category",descending=False)
+d_cons_speed=data_cons_speed.with_columns(
+        pl.when(pl.col("Category").is_in(["125cc","Moto3"])).then(pl.lit("Lightweigth")).otherwise(
+            pl.when(pl.col("Category").is_in(["250cc","Moto2"])).then(pl.lit("Middleweigth")).otherwise(pl.lit("MotoGP"))
+        ).alias("Cat")
+    ).select("Year", "Constructor","Cat","Speed").drop_nulls()
+st.session_state.d_cons_speed=d_cons_speed
+cons11, cons12=st.columns(2)
+#cons2.write(d_cons)
+#In cons1 metterò le opzioni di selezione, in cons2 il dataset filtrato.
+#RICORDARSI DI CAMBIARE LE KEY A TUTTI I MULTISELECT
+cons_list_2=sorted(d_cons_speed.select(pl.col("Constructor").unique()).to_series().to_list())
+st.session_state.cons_list_2=cons_list_2
+cons_sel_2=cons11.multiselect("Inserire costruttore/i di interesse", cons_list_2)
+if len(cons_sel_2)==0:
+    st.write("Inserire almeno un costruttore.")
+else:
+    d_cons_filt_2=d_cons_speed.filter(pl.col("Constructor").is_in(cons_sel_2))
+    c_year_list_2=sorted(d_cons_filt_2.select(pl.col("Year").unique()).to_series().to_list())
+    st.session_state.c_year_list_2=c_year_list_2
+    c_year_sel_2=cons11.select_slider("Inserire anno limite:", c_year_list_2, key=8)
+    d_cons_speed_year=d_cons_filt_2.filter(pl.col("Year")<=c_year_sel_2)
+    c_cat_list_2=sorted(d_cons_speed_year.select(pl.col("Cat").unique()).to_series().to_list())
+    st.session_state.c_cat_list_2=c_cat_list_2
+    c_cat_sel_2=cons11.multiselect("Inserire categoria desiderata:", c_cat_list_2, default=c_cat_list_2)
+    if len(c_cat_sel_2)!=0:
+        d_cons_speed_year_cat=d_cons_speed_year.filter(pl.col("Cat").is_in(c_cat_sel_2))
+        cons12.write(d_cons_speed_year_cat)
+        st.write("**Confronto grafico per ogni categoria**")
+        for i in c_cat_sel_2:
+            d_cons_speed_year_cat_filt=d_cons_speed_year_cat.filter(pl.col("Cat")==str(i))
+            cons_ch_filt_2=alt.Chart(d_cons_speed_year_cat_filt).mark_line().encode(alt.X("Year"), alt.Y("Points"), alt.Color("Constructor").scale(scheme="viridis"), alt.Text("Points"))
+            st.write(i)
+            st.altair_chart(cons_ch_filt_2, use_container_width=True)
+    else:
+        cons12.write(d_cons_speed_year)
+        st.write("**Confronto grafico per ogni categoria**")
+        st.write("Per il confronto grafico selezionare almeno una categoria")
+######### CAMBIAMO COMPLETAMENTE UNITA' STATISTICA #########
+st.header("Analisi per piste")
