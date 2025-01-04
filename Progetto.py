@@ -11,7 +11,60 @@ st.header("Database completo da analizzare, disordinato:")
 st.write("Nelle colonne Position e Finish_Time, dove mancano i valori, è perché il pilota non ha terminato il Gran Premio.")
 st.write("__PURTROPPO, PER RAGIONI A NOI IGNOTE, NEL DATASET MANCANO I RISULTATI DEL GP DI SPAGNA CLASSE 125cc. LE CLASSIFICHE DI QUELLA STAGIONE RISULTAERANNO QUINDI ALTERATE.__")
 st.write(data)
-
+data_rac=data.filter(pl.col("Session")=="RAC")
+data_rac2=data.filter(pl.col("Session")=="RAC2")
+merged=data_rac.join(data_rac2, on=["Year","TRK","Track","Category","Date","Position","GP","track_length_km","l_corners","r_corners","width_m",
+                                    "straight_m","GP_avg_speed","gp_dist","m2_dist","m3_dist"], how="left")
+data=merged.with_columns([
+    pl.coalesce(["Session_right","Session"]).alias("Session"),
+    pl.coalesce(["Track_Condition_right","Track_Condition"]).alias("Track_Condition"),
+    pl.coalesce(["Track_Temp_right","Track_Temp"]).alias("Track_Temp"),
+    pl.coalesce(["Air_Temp_right","Air_Temp"]).alias("Air_Temp"),
+    pl.coalesce(["Humidity_right","Humidity"]).alias("Humidity"),
+    pl.coalesce(["Points_right","Points"]).alias("Points"),
+    pl.coalesce(["Rider_Number_right","Rider_Number"]).alias("Rider_Number"),
+    pl.coalesce(["Rider_Name_right","Rider_Name"]).alias("Rider_Name"),
+    pl.coalesce(["Nationality_right","Nationality"]).alias("Nationality"),
+    pl.coalesce(["Team_Name_right","Team_Name"]).alias("Team_Name"),
+    pl.coalesce(["Bike_right","Bike"]).alias("Bike"),
+    pl.coalesce(["Avg_Speed_right","Avg_Speed"]).alias("Avg_Speed"),
+    pl.coalesce(["Time_right","Time"]).alias("Time"),
+    pl.coalesce(["Finish_Time_right","Finish_Time"]).alias("Finish_Time")
+])
+data=data.with_columns(pl.when(pl.col("Position")==1).then(pl.lit(25)).otherwise(
+    pl.when(pl.col("Position")==2).then(pl.lit(20)).otherwise(
+        pl.when(pl.col("Position")==3).then(pl.lit(16)).otherwise(
+            pl.when(pl.col("Position")==4).then(pl.lit(13)).otherwise(
+                pl.when(pl.col("Position")==5).then(pl.lit(11)).otherwise(
+                    pl.when(pl.col("Position")==6).then(pl.lit(10)).otherwise(
+                        pl.when(pl.col("Position")==7).then(pl.lit(9)).otherwise(
+                            pl.when(pl.col("Position")==8).then(pl.lit(8)).otherwise(
+                                pl.when(pl.col("Position")==9).then(pl.lit(7)).otherwise(
+                                    pl.when(pl.col("Position")==10).then(pl.lit(6)).otherwise(
+                                        pl.when(pl.col("Position")==11).then(pl.lit(5)).otherwise(
+                                            pl.when(pl.col("Position")==12).then(pl.lit(4)).otherwise(
+                                                pl.when(pl.col("Position")==13).then(pl.lit(3)).otherwise(
+                                                    pl.when(pl.col("Position")==14).then(pl.lit(2)).otherwise(
+                                                        pl.when(pl.col("Position")==15).then(pl.lit(1)).otherwise(
+                                                            pl.lit(0))
+                                                        )
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    ).alias("Points_corr")
+)
+data=data.with_columns([
+    pl.coalesce(["Points_corr","Points"]).alias("Points")
+])
 #######
 ### CLASSIFICHE GENERALI ###
 st.header("Classifiche generali")
@@ -232,6 +285,30 @@ else:
     wet2.write(data_wet_rid_year_cat)
     st.altair_chart(alt.Chart(data_wet_rid_year_cat).mark_line().encode(x="Year", y="Avg_Speed", color="Rider_Name"),
                 use_container_width=True)
+##
+st.subheader("Piloti e numeri di gara")
+rid_numbers=sorted(data.select(pl.col("Rider_Number").unique()).drop_nulls().to_series().to_list())
+st.session_state.rid_numbers=rid_numbers
+d_rid_num=data.group_by("Rider_Name","Rider_Number").agg(pl.col("Rider_Number").count().alias("N_races")).drop_nulls().sort(
+    pl.col("Rider_Name"), descending=False)
+st.write("**Analisi in base al numero**")
+num1, num2=st.columns(2)
+num1.write("Andiamo a guardare il rapporto tra piloti e i numeri sulle carene delle loro moto, osservando per quante gare ad esempio sono durati i rispettivi connubi.")
+num=int(num2.select_slider("Inserire numero da analizzare:", rid_numbers))
+d_rid_num_filt=d_rid_num.filter(pl.col("Rider_Number")==num)
+num1.write(d_rid_num_filt)
+num_chart=alt.Chart(d_rid_num_filt).mark_arc(innerRadius=50).encode(alt.Theta("N_races"), alt.Color("Rider_Name"), alt.Text("N_races"))
+num2.altair_chart(num_chart, use_container_width=True)
+st.write("**Analisi in base ai piloti**")
+num11, num12=st.columns(2)
+rid_list=sorted(d_rid_num.select(pl.col("Rider_Name").unique()).drop_nulls().to_series().to_list())
+st.session_state.rid_list=rid_list
+rid=num11.selectbox("Inserire pilota desiderato", rid_list)
+d_rid_num_2=d_rid_num.filter(pl.col("Rider_Name")==rid)
+rid_chart=alt.Chart(d_rid_num_2).mark_arc(innerRadius=50).encode(alt.Theta("N_races"), alt.Color("Rider_Number"), alt.Text("N_races"))
+num11.write(d_rid_num_2.sort(pl.col("N_races"), descending=True))
+num12.altair_chart(rid_chart, use_container_width=True)
+##
 ### SVOLGO ANALISI SIMILI MA CON I COSTRUTTORI. ###
 st.header("Analisi per costruttore")
 st.subheader("Costruttori e punti medi")
@@ -293,7 +370,7 @@ cons11, cons12=st.columns(2)
 #RICORDARSI DI CAMBIARE LE KEY A TUTTI I MULTISELECT
 cons_list_2=sorted(d_cons_speed.select(pl.col("Constructor").unique()).to_series().to_list())
 st.session_state.cons_list_2=cons_list_2
-cons_sel_2=cons11.multiselect("Inserire costruttore/i di interesse", cons_list_2)
+cons_sel_2=cons11.multiselect("Inserire costruttore/i di interesse", cons_list_2, key=21)
 if len(cons_sel_2)==0:
     st.write("Inserire almeno un costruttore.")
 else:
@@ -304,16 +381,19 @@ else:
     d_cons_speed_year=d_cons_filt_2.filter(pl.col("Year")<=c_year_sel_2)
     c_cat_list_2=sorted(d_cons_speed_year.select(pl.col("Cat").unique()).to_series().to_list())
     st.session_state.c_cat_list_2=c_cat_list_2
-    c_cat_sel_2=cons11.multiselect("Inserire categoria desiderata:", c_cat_list_2, default=c_cat_list_2)
+    c_cat_sel_2=cons11.multiselect("Inserire categoria desiderata:", c_cat_list_2, default=c_cat_list_2, key=12)
     if len(c_cat_sel_2)!=0:
         d_cons_speed_year_cat=d_cons_speed_year.filter(pl.col("Cat").is_in(c_cat_sel_2))
         cons12.write(d_cons_speed_year_cat)
         st.write("**Confronto grafico per ogni categoria**")
         for i in c_cat_sel_2:
             d_cons_speed_year_cat_filt=d_cons_speed_year_cat.filter(pl.col("Cat")==str(i))
-            cons_ch_filt_2=alt.Chart(d_cons_speed_year_cat_filt).mark_line().encode(alt.X("Year"), alt.Y("Points"), alt.Color("Constructor").scale(scheme="viridis"), alt.Text("Points"))
+            cons_ch_filt_2=alt.Chart(d_cons_speed_year_cat_filt).mark_line().encode(alt.X("Year"), alt.Y("Speed"), alt.Color("Constructor").scale(scheme="viridis"), alt.Text("Speed"))
             st.write(i)
-            st.altair_chart(cons_ch_filt_2, use_container_width=True)
+            if len(c_year_list_2)>1:
+                st.altair_chart(cons_ch_filt_2, use_container_width=True)
+            else:
+                st.write("Con una sola rilevazione nel tempo non è possibile eseguire un'analisi grafica.")
     else:
         cons12.write(d_cons_speed_year)
         st.write("**Confronto grafico per ogni categoria**")
