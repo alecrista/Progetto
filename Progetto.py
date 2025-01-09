@@ -201,9 +201,9 @@ d_dry=data_rider_speed.filter(pl.col("Track_Condition")=="Dry")
 d_dry_gen=d_dry.group_by("Year","Category").agg(pl.col("Avg_Speed").mean()).sort("Year","Category", descending=False)
 d_dry_gen=d_dry_gen.with_columns(
     pl.when(pl.col("Category").is_in(["125cc","Moto3"]))
-    .then(pl.lit("Lightweigth"))
+    .then(pl.lit("Lightweight"))
     .otherwise(pl.when(pl.col("Category").is_in(["250cc","Moto2"]))
-               .then(pl.lit("Middleweigth"))
+               .then(pl.lit("Middleweight"))
                .otherwise(pl.lit("MotoGP")))
                .alias("Cat"))
 dry1, dry2=st.columns(2)
@@ -215,9 +215,9 @@ dry1, dry2=st.columns(2)
 d_dry_rid=d_dry.group_by("Year","Category","Rider_Name","Bike").agg(pl.col("Avg_Speed").mean()).sort("Year","Rider_Name","Category", descending=False)
 d_dry_rid=d_dry_rid.with_columns(
     pl.when(pl.col("Category").is_in(["125cc","Moto3"]))
-    .then(pl.lit("Lightweigth"))
+    .then(pl.lit("Lightweight"))
     .otherwise(pl.when(pl.col("Category").is_in(["250cc","Moto2"]))
-               .then(pl.lit("Middleweigth"))
+               .then(pl.lit("Middleweight"))
                .otherwise(pl.lit("MotoGP")))
                .alias("Cat"))
 st.session_state.d_dry_rid=d_dry_rid
@@ -247,9 +247,9 @@ d_wet=data_rider_speed.filter(pl.col("Track_Condition")=="Wet")
 d_wet_gen=d_wet.group_by("Year","Category").agg(pl.col("Avg_Speed").mean()).sort("Year","Category", descending=False)
 d_wet_gen=d_wet_gen.with_columns(
     pl.when(pl.col("Category").is_in(["125cc","Moto3"]))
-    .then(pl.lit("Lightweigth"))
+    .then(pl.lit("Lightweight"))
     .otherwise(pl.when(pl.col("Category").is_in(["250cc","Moto2"]))
-               .then(pl.lit("Middleweigth"))
+               .then(pl.lit("Middleweight"))
                .otherwise(pl.lit("MotoGP")))
                .alias("Cat"))
 wet1,wet2=st.columns(2)
@@ -262,9 +262,9 @@ wet1, wet2=st.columns(2)
 d_wet_rid=d_wet.group_by("Year","Category","Rider_Name","Bike").agg(pl.col("Avg_Speed").mean()).sort("Year","Rider_Name","Category", descending=False)
 d_wet_rid=d_wet_rid.with_columns(
     pl.when(pl.col("Category").is_in(["125cc","Moto3"]))
-    .then(pl.lit("Lightweigth"))
+    .then(pl.lit("Lightweight"))
     .otherwise(pl.when(pl.col("Category").is_in(["250cc","Moto2"]))
-               .then(pl.lit("Middleweigth"))
+               .then(pl.lit("Middleweight"))
                .otherwise(pl.lit("MotoGP")))
                .alias("Cat"))
 st.session_state.d_wet_rid=d_wet_rid
@@ -317,8 +317,8 @@ data_cons=data.group_by("Year",pl.col("Bike").alias("Constructor"),"Category").a
 #Riunisco Moto2 e 250cc nella categoria "Middleweight" e Moto3 e 125cc nella categoria "Lightweigth"
 #creo quindi le liste di anni e categorie e le salvo al server di Streamlit
 d_cons=data_cons.with_columns(
-        pl.when(pl.col("Category").is_in(["125cc","Moto3"])).then(pl.lit("Lightweigth")).otherwise(
-            pl.when(pl.col("Category").is_in(["250cc","Moto2"])).then(pl.lit("Middleweigth")).otherwise(pl.lit("MotoGP"))
+        pl.when(pl.col("Category").is_in(["125cc","Moto3"])).then(pl.lit("Lightweight")).otherwise(
+            pl.when(pl.col("Category").is_in(["250cc","Moto2"])).then(pl.lit("Middleweight")).otherwise(pl.lit("MotoGP"))
         ).alias("Cat")
     ).select("Year", "Constructor","Points","Cat").drop_nulls()
 st.session_state.d_cons=d_cons
@@ -355,12 +355,12 @@ else:
 #########
 st.subheader("Costruttori e velocità (medie) massime")
 st.write("Quale costruttore ha mostrato più potenziale nel corso di stagione in ogni categoria? Lo scopriamo attraverso questa inusuale ma secondo me utile analisi:",
-"Andremo infatti a vedere le velocità medie (variabile Avg_Speed) più alte per ogni costruttore in una stagione per ogni categoria in cui esso ha partecipato.")
-data_cons_speed=data.group_by("Year",pl.col("Bike").alias("Constructor"),"Category").agg(pl.col("Avg_Speed").alias("Speed").max()
+"Andremo infatti a vedere le velocità medie (variabile Avg_Speed) per ogni costruttore in una stagione per ogni categoria in cui esso ha partecipato.")
+data_cons_speed=data.group_by("Year",pl.col("Bike").alias("Constructor"),"Category").agg(pl.col("Avg_Speed").alias("Speed").mean().round(3)
                   ).sort("Constructor","Year","Category",descending=False)
 d_cons_speed=data_cons_speed.with_columns(
-        pl.when(pl.col("Category").is_in(["125cc","Moto3"])).then(pl.lit("Lightweigth")).otherwise(
-            pl.when(pl.col("Category").is_in(["250cc","Moto2"])).then(pl.lit("Middleweigth")).otherwise(pl.lit("MotoGP"))
+        pl.when(pl.col("Category").is_in(["125cc","Moto3"])).then(pl.lit("Lightweight")).otherwise(
+            pl.when(pl.col("Category").is_in(["250cc","Moto2"])).then(pl.lit("Middleweight")).otherwise(pl.lit("MotoGP"))
         ).alias("Cat")
     ).select("Year", "Constructor","Cat","Speed").drop_nulls()
 st.session_state.d_cons_speed=d_cons_speed
@@ -383,7 +383,7 @@ else:
     st.session_state.c_cat_list_2=c_cat_list_2
     c_cat_sel_2=cons11.multiselect("Inserire categoria desiderata:", c_cat_list_2, default=c_cat_list_2, key=12)
     if len(c_cat_sel_2)!=0:
-        d_cons_speed_year_cat=d_cons_speed_year.filter(pl.col("Cat").is_in(c_cat_sel_2))
+        d_cons_speed_year_cat=d_cons_speed_year.filter(pl.col("Cat").is_in(c_cat_sel_2)).sort("Year", "Constructor", descending=False)
         cons12.write(d_cons_speed_year_cat)
         st.write("**Confronto grafico per ogni categoria**")
         for i in c_cat_sel_2:
@@ -400,3 +400,118 @@ else:
         st.write("Per il confronto grafico selezionare almeno una categoria")
 ######### CAMBIAMO COMPLETAMENTE UNITA' STATISTICA #########
 st.header("Analisi per piste")
+st.subheader("Ohi, que calor!")
+st.write("In questa sezione confronteremo le varie temperature medie di asfalto e aria per ogni pista, non tenendo conto del periodo in cui si corre.")
+data_track_temp=data.group_by("Year", pl.col("GP").alias("Track"), "Track_Condition").agg(pl.col("Track_Temp").mean(), pl.col("Air_Temp").mean()).sort("Year","Track","Track_Condition",descending=False)
+wet_dry=st.selectbox("Inserire condizione di pista desiderata", ["Dry", "Wet"])
+st.write("Dry: Asciutto, Wet: Bagnato")
+if wet_dry=="Dry":
+    data_track_temp_d=data_track_temp.filter(pl.col("Track_Condition")=="Dry")
+    trk1, trk2=st.columns(2)
+    trk_list=sorted(data_track_temp_d.select("Track").unique().to_series().to_list())
+    st.session_state.trk_list=trk_list
+    trk_filt=trk1.multiselect("Selezionare pista/e d'interesse:", trk_list)
+    data_track_temp_d_filt=data_track_temp_d.filter(pl.col("Track").is_in(trk_filt))
+    trk_year_list=sorted(data_track_temp_d_filt.select("Year").unique().to_series().to_list())
+    st.session_state.trk_year_list=trk_year_list
+    year_filt=trk2.select_slider("Selezionare pista/e d'interesse:", trk_year_list, key=55)
+    data_track_temp_d_final=data_track_temp_d_filt.filter(pl.col("Year")<=year_filt)
+    if len(trk_filt)==0:
+        st.write("Selezionare almeno una pista")
+    else:
+        trk_chart_d_ttemp=alt.Chart(data_track_temp_d_final).mark_line().encode(
+            alt.X("Year"), alt.Y("Track_Temp"), alt.Color("Track").scale(scheme="viridis"), alt.Text("Track_Temp"))
+        trk_chart_d_atemp=alt.Chart(data_track_temp_d_final).mark_line().encode(
+            alt.X("Year"), alt.Y("Air_Temp"), alt.Color("Track").scale(scheme="viridis"), alt.Text("Air_Temp"))
+        st.write("**Temperature asfalto**")
+        st.altair_chart(trk_chart_d_ttemp, use_container_width=True)
+        st.write("**Temperature aria**")
+        st.altair_chart(trk_chart_d_atemp, use_container_width=True)
+        st.write(data_track_temp_d_final)
+else:
+    data_track_temp_w=data_track_temp.filter(pl.col("Track_Condition")=="Wet")
+    trk1, trk2=st.columns(2)
+    trk_list=sorted(data_track_temp_w.select("Track").unique().to_series().to_list())
+    st.session_state.trk_list=trk_list
+    trk_filt=trk1.multiselect("Selezionare pista/e d'interesse:", trk_list)
+    data_track_temp_w_filt=data_track_temp_w.filter(pl.col("Track").is_in(trk_filt))
+    trk_year_list=sorted(data_track_temp_w_filt.select("Year").unique().to_series().to_list())
+    st.session_state.trk_year_list=trk_year_list
+    year_filt=trk2.select_slider("Selezionare anno massimo d'interesse:", trk_year_list, key=65)
+    data_track_temp_w_final=data_track_temp_w_filt.filter(pl.col("Year")<=year_filt)
+    if len(trk_filt)==0:
+        st.write("Selezionare almeno una pista")
+    else:
+        trk_chart_d_ttemp=alt.Chart(data_track_temp_w_final).mark_line().encode(
+            alt.X("Year"), alt.Y("Track_Temp"), alt.Color("Track").scale(scheme="viridis"), alt.Text("Track_Temp"))
+        trk_chart_d_atemp=alt.Chart(data_track_temp_w_final).mark_line().encode(
+            alt.X("Year"), alt.Y("Air_Temp"), alt.Color("Track").scale(scheme="viridis"), alt.Text("Air_Temp"))
+        st.write("**Temperature asfalto**")
+        st.altair_chart(trk_chart_d_ttemp, use_container_width=True)
+        st.write("**Temperature aria**")
+        st.altair_chart(trk_chart_d_atemp, use_container_width=True)
+        st.write(data_track_temp_w_final)
+##
+st.subheader("Piste-aeroporti")
+st.write(
+    "In questa sezione confronteremo, come fatto già numerose volte in precedenza, le velocità medie. Questa volta, "
+    "Ovviamente distingueremo tutto per categoria e condizioni della pista."
+    )
+data_trk_speed=data.group_by("Year",pl.col("GP").alias("Track"),"Category","Track_Condition").agg(pl.col("Avg_Speed").mean().alias("Speed"))
+data_trk_speed=data_trk_speed.with_columns(
+        pl.when(pl.col("Category").is_in(["125cc","Moto3"])).then(pl.lit("Lightweight")).otherwise(
+            pl.when(pl.col("Category").is_in(["250cc","Moto2"])).then(pl.lit("Middleweight")).otherwise(pl.lit("MotoGP"))
+        ).alias("Cat")
+    ).select("Year", "Track","Cat","Track_Condition","Speed").drop_nulls()
+wet_dry=st.selectbox("Inserire condizione di pista desiderata", ["Dry", "Wet"], key=69)
+st.write("Dry: Asciutto, Wet: Bagnato")
+if wet_dry=="Dry":
+    d_t_speed_d=data_trk_speed.filter(pl.col("Track_Condition")=="Dry")
+    trk_list_2=sorted(d_t_speed_d.select(pl.col("Track").unique()).to_series().to_list())
+    st.session_state.trk_list_2=trk_list_2
+    trk11, trk12=st.columns(2)
+    trk_d_filt=trk11.multiselect("Inserire pista", trk_list_2, key=32)
+    if len(trk_d_filt)==0:
+        st.write("Inserire almeno una pista")
+    else:
+        d_t_speed_d_filt=d_t_speed_d.filter(pl.col("Track").is_in(trk_d_filt))
+        t_year_list=sorted(d_t_speed_d_filt.select(pl.col("Year").unique()).to_series().to_list())
+        st.session_state.t_year_list=t_year_list
+        t_year_filt=trk11.select_slider("Inserire anno massimo desiderato:", t_year_list, key=42)
+        d_t_speed_d_final=d_t_speed_d_filt.filter(pl.col("Year")<=t_year_filt)
+        st.write(d_t_speed_d_final.sort("Year", "Cat", descending=False))
+        cat_trk_list=sorted(d_t_speed_d_final.select(pl.col("Cat").unique()).to_series().to_list())
+        st.session_state.cat_trk_list=cat_trk_list
+        for i in cat_trk_list:
+            d_t_speed_d_final_cat=d_t_speed_d_final.filter(pl.col("Cat")==str(i))
+            t_speed_chart_d_cat=alt.Chart(d_t_speed_d_final_cat).mark_line().encode(
+                alt.X("Year"), alt.Y("Speed"), alt.Color("Track").scale(scheme="viridis"), alt.Text("Speed")
+                )
+            st.write(str(i))
+            st.altair_chart(t_speed_chart_d_cat, use_container_width=True)
+else:
+    d_t_speed_w=data_trk_speed.filter(pl.col("Track_Condition")=="Wet")
+    trk_list_2=sorted(d_t_speed_w.select(pl.col("Track").unique()).to_series().to_list())
+    st.session_state.trk_list_2=trk_list_2
+    trk11, trk12=st.columns(2)
+    trk_w_filt=trk11.multiselect("Inserire pista", trk_list_2, key=33)
+    if len(trk_w_filt)==0:
+        st.write("Inserire almeno una pista")
+    else:
+        d_t_speed_w_filt=d_t_speed_w.filter(pl.col("Track").is_in(trk_w_filt))
+        t_year_list=sorted(d_t_speed_w_filt.select(pl.col("Year").unique()).to_series().to_list())
+        st.session_state.t_year_list=t_year_list
+        t_year_filt=trk11.select_slider("Inserire anno massimo desiderato:", t_year_list, key=43)
+        d_t_speed_w_final=d_t_speed_w_filt.filter(pl.col("Year")<=t_year_filt)
+        st.write(d_t_speed_w_final.sort("Year", "Cat", descending=False))
+        cat_trk_list=sorted(d_t_speed_w_final.select(pl.col("Cat").unique()).to_series().to_list())
+        st.session_state.cat_trk_list=cat_trk_list
+        for i in cat_trk_list:
+            d_t_speed_w_final_cat=d_t_speed_w_final.filter(pl.col("Cat")==str(i))
+            t_speed_chart_w_cat=alt.Chart(d_t_speed_w_final_cat).mark_line().encode(
+                alt.X("Year"), alt.Y("Speed"), alt.Color("Track").scale(scheme="viridis"), alt.Text("Speed")
+                )
+            st.write(str(i))
+            st.altair_chart(t_speed_chart_w_cat, use_container_width=True)
+#####
+st.title("SPERO SIA PIACIUTO COME PROGETTO, BUON PROSEGUIMENTO DI GIORNATA!")
