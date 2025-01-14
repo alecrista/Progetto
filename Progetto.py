@@ -4,6 +4,7 @@ import polars as pl
 import datetime as dt
 import pandas as pd
 import math as mt
+#git@github.com:alecrista/Progetto.git
 data=pl.read_csv("MotoGP_2005_2017.csv", null_values=[" ","NA","crash"])
 st.session_state.data=data
 st.title("Database Motomondiale 2005-2017")
@@ -153,6 +154,7 @@ st.write("Se si seleziona la modalità Gran Premio - Anno allora si dovrà selez
          " Se si seleziona la modalità Per data allora si dovrà selezionare una data compresa tra l'1 gennaio 2005 e il 31 dicembre 2017."
          " In quest'ultimo caso si consiglia di selezionare quasi sempre domeniche, tranne nei casi in cui il Gran Premio d'Olanda si correva"
          " l'ultimo sabato di Giugno nel periodo 2005-2015. Dal 2016 è sempre stata l'ultima domenica del mese."
+         " Un altro caso di GP non domenicale è quello del GP di Qatar del 2009, dove la classe MotoGP ha corso di lunedì (più precisamente il 13 aprile)."
          " Infine da notare che nella modalità Per data, la nazionalità del GP di cui si stanno osservando i risultati si trova nella colonna GP."
 )
 mod=st.selectbox("Inserire modalità di filtraggio:", ["Gran Premio - Anno", "Per data"])
