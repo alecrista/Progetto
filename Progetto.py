@@ -4,7 +4,7 @@ import polars as pl
 import datetime as dt
 import pandas as pd
 import math as mt
-#git@github.com:alecrista/Progetto.git
+#git@github.com:alecrista/Progetto.git, utile per evitare di fare sempre l'accesso a Github
 data=pl.read_csv("MotoGP_2005_2017.csv", null_values=[" ","NA","crash"])
 st.session_state.data=data
 st.title("Database Motomondiale 2005-2017")
@@ -207,7 +207,7 @@ data_rider_points=data_rider_points.drop_nulls() #dataset dei punteggi di ogni p
 col111, col112=st.columns(2)
 rider_list=sorted(data.select(pl.col("Rider_Name").unique()).drop_nulls().to_series().to_list()) #lista di selezione piloti
 st.session_state.rider_list=rider_list #salvo la lista a session state per sicurezza
-riders=col111.multiselect("Inserire piloti desiderati:", rider_list) #operatore di filtraggio per pilota
+riders=col111.multiselect("Inserire piloti desiderati:", rider_list, default="Valentino ROSSI") #operatore di filtraggio per pilota
 d_filt_1=data_rider_points.filter(pl.col("Rider_Name").is_in(riders)) #dataset filtrato per pilota
 if len(riders)!=0:
     cat_list=sorted(d_filt_1.select(pl.col("Category").unique()).to_series().to_list()) #lista di selezione categorie
@@ -292,7 +292,7 @@ d_dry_rid=d_dry_rid.with_columns( #Dataset con variabile categoria riassunta e c
                .alias("Cat"))
 rid_dry=sorted(d_dry_rid.select("Rider_Name").unique().to_series().to_list()) 
 st.session_state.rid_dry=rid_dry #"salvo" la lista di piloti attraverso session_state
-rid_dry_sel=dry1.multiselect("Selezionare pilota/i desiderato/i:", rid_dry)
+rid_dry_sel=dry1.multiselect("Selezionare pilota/i desiderato/i:", rid_dry, default="Jorge LORENZO")
 if len(rid_dry_sel)==0:
     st.write("Inserire almeno un pilota.")
 else:
@@ -342,7 +342,7 @@ d_wet_rid=d_wet_rid.with_columns(
                .alias("Cat"))
 rid_wet=sorted(d_wet_rid.select("Rider_Name").unique().to_series().to_list())
 st.session_state.rid_wet=rid_wet #"salvo" per sicurezza la lista di piloti (dataset pista bagnata)
-rid_wet_sel=wet1.multiselect("Selezionare pilota desiderato", rid_wet)
+rid_wet_sel=wet1.multiselect("Selezionare pilota desiderato", rid_wet, default="Marc MARQUEZ")
 if len(rid_wet_sel)==0:
     st.write("Inserire almeno un pilota")
 else:
@@ -417,7 +417,7 @@ cons1, cons2=st.columns(2)
 cons_list=sorted(d_cons.select(pl.col("Constructor").unique()).to_series().to_list())
 st.session_state.cons_list=cons_list #salvo la lista dei costruttori
 cons_sel=cons1.multiselect("Inserire costruttore/i di interesse: (Attenzione: se si inserisce solo un costruttore che ha corso per solo un anno il programma darà errore, per cui selezionarne per sicurezza anche uno longevo come Aprilia, Honda, Ducati o Yamaha)",
-                           cons_list)
+                           cons_list, default="Yamaha")
 if len(cons_sel)==0:
     st.write("Inserire almeno un costruttore.")
 else:
@@ -444,7 +444,7 @@ else:
         st.write("**Confronto grafico per ogni categoria**")
         st.write("Per il confronto grafico selezionare almeno una categoria")
 #########
-st.subheader("Costruttori e velocità (medie) massime")
+st.subheader("Costruttori e velocità medie")
 st.write("Quale costruttore ha mostrato più potenziale nel corso di stagione in ogni categoria? Lo scopriamo attraverso questa inusuale ma secondo me utile analisi:",
 "andremo infatti a vedere le velocità medie (variabile Avg_Speed) per ogni costruttore in una stagione per ogni categoria in cui esso ha partecipato.",
 "Riassumeremo come prima 125 e Moto3 in Lightweight e 250 e Moto2 in Middleweigth.")
@@ -467,7 +467,7 @@ cons11, cons12=st.columns(2)
 #In cons1 metterò le opzioni di selezione, in cons2 il dataset filtrato.
 cons_list_2=sorted(d_cons_speed.select(pl.col("Constructor").unique()).to_series().to_list())
 st.session_state.cons_list_2=cons_list_2 #salvo un'altra lista costruttori
-cons_sel_2=cons11.multiselect("Inserire costruttore/i di interesse:", cons_list_2, key=21)
+cons_sel_2=cons11.multiselect("Inserire costruttore/i di interesse:", cons_list_2, default="Honda", key=21)
 if len(cons_sel_2)==0:
     st.write("Inserire almeno un costruttore.")
 else:

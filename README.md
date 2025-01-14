@@ -2,7 +2,16 @@
 Con questo progetto andremo ad analizzare il meglio (e il peggio) del Motomondiale nel periodo 2005-2017. Il database originale lo si può trovare sulla seguente piattaforma:  
 [**Database originale**](https://raw.githubusercontent.com/nbugliar/motogp_regression/master/MotoGP_2005_2017.csv)  
 Le operazioni eseguite, messe insieme, non saranno altro che un'analisi esplorativa, un pochino particolare forse, sui dati di cui dispone il database.  
-Trattandosi di competizioni le principali misure che verranno prese saranno punteggie e velocità, ma ci saranno anche altri dati curiosi da analizzare.  
+Trattandosi di competizioni le principali misure che verranno prese saranno punteggie e velocità, ma ci saranno anche altri dati curiosi da analizzare.
+Per questo progetto è stata usata la piattaforma Streamlit, importabile come libreria e le altre seguenti librerie:
+```
+import streamlit as st 
+import altair as alt #per i grafici
+import polars as pl #per eseguire operazioni sulle tabelle
+import datetime as dt #per eseguire operazioni su date
+import pandas as pd #per eseguire operazioni sul dataframe non eseguibili con polars
+import math as mt #per eseguire operazioni di semplice calcolo matematico in caso ce ne fosse bisogno
+```
 ### Piccoli problemi inziali
 Il database originale non è perfetto: ho dovuto inizialmente rimuovere i dati inutili, come ad esempio, in caso di gare interrotte dalla bandiera rossa con successiva ripartenza, le classifiche delle gare al momento dell'interruzione. Ai fini della nostra analisi esse sarebbero state inutili, pocihé la classifica finale, in quei casi appunto di ripartenza, è data dall'arrivo della _"seconda"_ gara.  
 Poi ho dovuto aggiungere punteggi mancanti a certi Gran Premi (ad esempio il GP di Repubblica Ceca 2005 classe MotoGP), per motivi ignoti e poi sostituire eventuali doppioni sia tra le case costruttrici che tra i piloti (es. nel database il pilota Dani PEDROSA appariva sia con il nome "Dani PEDROSA " che con il nome "Daniel PEDROSA", quindi il programma lo avrebbe considerato come 2 piloti diversi). Per farlo ho usato il comando:  
@@ -15,12 +24,6 @@ data=data.with_columns(
 Sì, perché ho avuto lo stesso problema con la casa costruttrica Forward Yamaha.
 Codice completo per l'inserimento e le modifiche del caso dei dati:  
 ```
-import streamlit as st
-import altair as alt
-import polars as pl
-import datetime as dt
-import pandas as pd
-import math as mt
 #git@github.com:alecrista/Progetto.git, utile per evitare di fare sempre l'accesso a Github
 data=pl.read_csv("MotoGP_2005_2017.csv", null_values=[" ","NA","crash"])
 st.session_state.data=data
@@ -214,7 +217,7 @@ data_rider_points=data_rider_points.drop_nulls() #dataset dei punteggi di ogni p
 col111, col112=st.columns(2)
 rider_list=sorted(data.select(pl.col("Rider_Name").unique()).drop_nulls().to_series().to_list()) #lista di selezione piloti
 st.session_state.rider_list=rider_list #salvo la lista a session state per sicurezza
-riders=col111.multiselect("Inserire piloti desiderati:", rider_list) #operatore di filtraggio per pilota
+riders=col111.multiselect("Inserire piloti desiderati:", rider_list, default="Valentino ROSSI") #operatore di filtraggio per pilota
 d_filt_1=data_rider_points.filter(pl.col("Rider_Name").is_in(riders)) #dataset filtrato per pilota
 if len(riders)!=0:
     cat_list=sorted(d_filt_1.select(pl.col("Category").unique()).to_series().to_list()) #lista di selezione categorie
@@ -298,7 +301,7 @@ d_dry_rid=d_dry_rid.with_columns( #Dataset con variabile categoria riassunta e c
                .alias("Cat"))
 rid_dry=sorted(d_dry_rid.select("Rider_Name").unique().to_series().to_list()) 
 st.session_state.rid_dry=rid_dry #"salvo" la lista di piloti attraverso session_state
-rid_dry_sel=dry1.multiselect("Selezionare pilota/i desiderato/i:", rid_dry)
+rid_dry_sel=dry1.multiselect("Selezionare pilota/i desiderato/i:", rid_dry, deafult="Jorge LORENZO")
 if len(rid_dry_sel)==0:
     st.write("Inserire almeno un pilota.")
 else:
@@ -348,7 +351,7 @@ d_wet_rid=d_wet_rid.with_columns(
                .alias("Cat"))
 rid_wet=sorted(d_wet_rid.select("Rider_Name").unique().to_series().to_list())
 st.session_state.rid_wet=rid_wet #"salvo" per sicurezza la lista di piloti (dataset pista bagnata)
-rid_wet_sel=wet1.multiselect("Selezionare pilota desiderato", rid_wet)
+rid_wet_sel=wet1.multiselect("Selezionare pilota desiderato", rid_wet, default="Marc MARQUEZ")
 if len(rid_wet_sel)==0:
     st.write("Inserire almeno un pilota")
 else:
@@ -365,4 +368,255 @@ else:
     st.altair_chart(alt.Chart(data_wet_rid_year_cat).mark_line().encode(alt.X("Year"), alt.Y("Avg_Speed").scale(zero=False), alt.Color("Rider_Name")),
                 use_container_width=True)
 ```
-### 
+### Piloti e numeri di gara
+Questa è un'analisi più inutile ma comunque curiosa, svolta per sfuttare più variabili da anlizzare, essendo il dataset colmo di esse. Non è altro che un'analisi sul rapporto tra piloti e numeri di gara appiccicati dulle carene delle loro moto, dove si vede prima che piloti hanno corso con un numero scelto dall'utente e poi con che numeri ha corso un pilota scelto dall'utente.
+Tutto questo seguendo la logica di tale codice:
+```
+rid_numbers=sorted(data.select(pl.col("Rider_Number").unique()).drop_nulls().to_series().to_list())
+for i in range(len(rid_numbers)):
+    rid_numbers[i]=int(rid_numbers[i]) #trasformo gli elementi dela lista da decimali ad interi
+st.session_state.rid_numbers=rid_numbers #"salvo" la lista di numeri di piloti
+d_rid_num=data.group_by("Rider_Name","Rider_Number").agg(pl.col("Rider_Number").count().alias("N_races")).drop_nulls().sort(
+    pl.col("Rider_Name"), descending=False) #dataset con tutti i piloti e tutti i loro numeri di gara
+st.write("**Analisi in base al numero**")
+num1, num2=st.columns(2)
+num1.write("Andiamo a guardare il rapporto tra piloti e i numeri sulle carene delle loro moto, osservando per quante gare ad esempio sono durati i rispettivi connubi.")
+num=int(num2.selectbox("Inserire numero da analizzare:", rid_numbers))
+d_rid_num_filt=d_rid_num.filter(pl.col("Rider_Number")==num) #dataset filtrato in base al numero
+num1.write(d_rid_num_filt)
+num_chart=alt.Chart(d_rid_num_filt).mark_arc(innerRadius=50).encode(alt.Theta("N_races"), alt.Color("Rider_Name"), alt.Text("N_races"))
+num2.altair_chart(num_chart, use_container_width=True)
+st.write("**Analisi in base ai piloti**")
+num11, num12=st.columns(2)
+rid_list=sorted(d_rid_num.select(pl.col("Rider_Name").unique()).drop_nulls().to_series().to_list())
+st.session_state.rid_list=rid_list #"salvo" la lista di piloti
+rid=num11.selectbox("Inserire pilota desiderato", rid_list)
+d_rid_num_2=d_rid_num.filter(pl.col("Rider_Name")==rid) #dataset filtrato in base al pilota
+rid_chart=alt.Chart(d_rid_num_2).mark_arc(innerRadius=50).encode(alt.Theta("N_races"), alt.Color("Rider_Number"), alt.Text("N_races"))
+#curiosamente Altair sceglie di usare la scala "log", questo perché gli si dice di cambiare colore in base ad un numero probabilmente.
+num11.write(d_rid_num_2.sort(pl.col("N_races"), descending=True))
+num12.altair_chart(rid_chart, use_container_width=True)
+```
+## Analisi per costruttore
+Vengono svolte le stesse analisi che vengono svolte sui piloti, solo in maniera leggermente diversa.
+### Costruttori e punti medi
+L'utente inserisce uno o più costruttori, una o più categorie e un periodo temporale a sua scelta e l'output saranno una tabella con rapprsentati i punteggi medi di ogni costruttore selezionato in ogni categoria selezionata per ogni anno e la sua rappresentazione grafica.  
+**Non l'ho specificato prima, lo specifico adesso: in quasi tutti i multiselect del progetto è stato settato un valore di default.**
+Comandi per ottenere l'output:
+```
+data_cons=data.group_by("Year",pl.col("Bike").alias("Constructor"),"Category").agg(pl.col("Points").mean()).sort("Year","Constructor", descending=False) #Mi creo il dataset su cui far partire l'analisi
+#Riunisco Moto2 e 250cc nella categoria "Middleweight" e Moto3 e 125cc nella categoria "Lightweigth"
+#creo quindi le liste di anni e categorie e le salvo al server di Streamlit
+d_cons=data_cons.with_columns(
+        pl.when(pl.col("Category").is_in(["125cc","Moto3"])).then(pl.lit("Lightweight")).otherwise(
+            pl.when(pl.col("Category").is_in(["250cc","Moto2"])).then(pl.lit("Middleweight")).otherwise(pl.lit("MotoGP"))
+        ).alias("Cat")
+    ).select("Year", "Constructor","Points","Cat").drop_nulls()
+cons1, cons2=st.columns(2)
+#cons2.write(d_cons)
+#In cons1 metterò le opzioni di selezione, in cons2 il dataset filtrato.
+cons_list=sorted(d_cons.select(pl.col("Constructor").unique()).to_series().to_list())
+st.session_state.cons_list=cons_list #salvo la lista dei costruttori
+cons_sel=cons1.multiselect("Inserire costruttore/i di interesse: (Attenzione: se si inserisce solo un costruttore che ha corso per solo un anno il programma darà errore, per cui selezionarne per sicurezza anche uno longevo come Aprilia, Honda, Ducati o Yamaha)",
+                           cons_list, default="Yamaha")
+if len(cons_sel)==0:
+    st.write("Inserire almeno un costruttore.")
+else:
+    d_cons_filt=d_cons.filter(pl.col("Constructor").is_in(cons_sel))
+    c_year_list=sorted(d_cons_filt.select(pl.col("Year").unique()).to_series().to_list())
+    st.session_state.c_year_list=c_year_list #salvo la lista annate.
+    c_year_sel=cons1.slider("Inserire periodo da analizzare:", min_value=c_year_list[0], max_value=max(c_year_list), value=(c_year_list[0], max(c_year_list)), key=7)
+    d_cons_year=d_cons_filt.filter(pl.col("Year")<=c_year_sel[1], pl.col("Year")>=c_year_sel[0]) #dataset filtrato per annate
+    c_cat_list=sorted(d_cons_year.select(pl.col("Cat").unique()).to_series().to_list())
+    st.session_state.c_cat_list=c_cat_list #salvo la lista categorie.
+    c_cat_sel=cons1.multiselect("Inserire categoria desiderata:", c_cat_list, default=c_cat_list)
+    if len(c_cat_sel)!=0:
+        d_cons_year_cat=d_cons_year.filter(pl.col("Cat").is_in(c_cat_sel)) #dataset filtrato per categorie in base all'annata
+        cons2.write(d_cons_year_cat)
+        st.write("**Confronto grafico per ogni categoria**")
+        for i in c_cat_sel:
+            d_cons_year_cat_filt=d_cons_year_cat.filter(pl.col("Cat")==str(i))
+            #grafico d'aiuto, se così si può chiamare ---v
+            cons_ch_filt=alt.Chart(d_cons_year_cat_filt).mark_line().encode(alt.X("Year"), alt.Y("Points").scale(zero=False), alt.Color("Constructor").scale(scheme="viridis"), alt.Text("Points"))
+            st.write(i)
+            st.altair_chart(cons_ch_filt, use_container_width=True)
+    else:
+        cons2.write(d_cons_year)
+        st.write("**Confronto grafico per ogni categoria**")
+        st.write("Per il confronto grafico selezionare almeno una categoria")
+```
+### Costruttori e velocità medie
+Identica analisi fatta con i piloti, quindi con distinzione tra categorie e condizioni della pista, solo fatta con i costruttori. L'input, come con i piloti, sono categoria, periodo temporale e anzichè pilota/i, appunto, costruttore.
+Codice di esecuzione del programma:
+```
+data_cons_speed=data.group_by("Year",pl.col("Bike").alias("Constructor"),"Category").agg(pl.col("Avg_Speed").alias("Speed").mean().round(3) #arrotondo alla terza cifra
+                  ).sort("Constructor","Year","Category",descending=False)
+d_cons_speed=data_cons_speed.with_columns( #dataset con dati riassunti
+        pl.when(pl.col("Category").is_in(["125cc","Moto3"])).then(pl.lit("Lightweight")).otherwise(
+            pl.when(pl.col("Category").is_in(["250cc","Moto2"])).then(pl.lit("Middleweight")).otherwise(pl.lit("MotoGP"))
+        ).alias("Cat")
+    ).select("Year", "Constructor","Cat","Speed").drop_nulls()
+cons11, cons12=st.columns(2)
+#In cons1 metterò le opzioni di selezione, in cons2 il dataset filtrato.
+cons_list_2=sorted(d_cons_speed.select(pl.col("Constructor").unique()).to_series().to_list())
+st.session_state.cons_list_2=cons_list_2 #salvo un'altra lista costruttori
+cons_sel_2=cons11.multiselect("Inserire costruttore/i di interesse:", cons_list_2, default="Honda", key=21)
+if len(cons_sel_2)==0:
+    st.write("Inserire almeno un costruttore.")
+else:
+    d_cons_filt_2=d_cons_speed.filter(pl.col("Constructor").is_in(cons_sel_2)) #dataset filtrato in base al costruttore
+    c_year_list_2=sorted(d_cons_filt_2.select(pl.col("Year").unique()).to_series().to_list())
+    st.session_state.c_year_list_2=c_year_list_2 #salvo un'altra lista di anni
+    c_year_sel_2=cons11.slider("Inserire periodo da anlizzare:", min_value=c_year_list_2[0], max_value=max(c_year_list_2), value=(c_year_list_2[0], max(c_year_list_2)), key=8)
+    d_cons_speed_year=d_cons_filt_2.filter(pl.col("Year")<=c_year_sel_2[1], pl.col("Year")>=c_year_sel_2[0])
+    c_cat_list_2=sorted(d_cons_speed_year.select(pl.col("Cat").unique()).to_series().to_list())
+    st.session_state.c_cat_list_2=c_cat_list_2 #salvo una lista di categorie
+    c_cat_sel_2=cons11.multiselect("Inserire categoria desiderata:", c_cat_list_2, default=c_cat_list_2, key=12)
+    if len(c_cat_sel_2)!=0:
+        #dataset filtrato in base alla categoria ---v
+        d_cons_speed_year_cat=d_cons_speed_year.filter(pl.col("Cat").is_in(c_cat_sel_2)).sort("Year", "Constructor", descending=False)
+        cons12.write(d_cons_speed_year_cat)
+        st.write("**Confronto grafico per ogni categoria**")
+        for i in c_cat_sel_2:
+            d_cons_speed_year_cat_filt=d_cons_speed_year_cat.filter(pl.col("Cat")==str(i))
+            cons_ch_filt_2=alt.Chart(d_cons_speed_year_cat_filt).mark_line().encode(alt.X("Year"), alt.Y("Speed").scale(zero=False), alt.Color("Constructor"), alt.Text("Speed"))
+            st.write(i)
+            if len(c_year_list_2)>1:
+                st.altair_chart(cons_ch_filt_2, use_container_width=True)
+            else:
+                st.write("Con una sola rilevazione nel tempo non è possibile eseguire un'analisi grafica.")
+    else:
+        cons12.write(d_cons_speed_year)
+        st.write("**Confronto grafico per ogni categoria**")
+        st.write("Per il confronto grafico selezionare almeno una categoria.")
+```
+## Analisi per tracciato
+L'ultima sezione prende le piste su cui si è corso come unità statistica. Le analisi svolte saranno su temperature medie e velocità, che non deve mai mancare.
+### Ohi, que calor!
+Il titolo, per quanto bizzarro, riflette il fulcro di questa analisi, ovvero il rapporto tra piste, temperature dell'aria e temperature dell'asfalto misurate, senza contare troppo sul periodo dell'anno in cui si è corso ma tenendo conto delle condizioni della pista (asciutta o bagnata).  
+L'utente metterà in input una o più piste su cui si è corso un determinato periodo temporale e l'output saranno la classica tabella dei dati filtrati con l'aggiunta anche della data di rilevazione (così magari l'utente si fa un'idea più chiara del perché di eventuali valori anomali rilevati) e la rappresentazione grafica di temperature dell'aria e dell'asfalto.  
+Da notare che, per differenziarsi dalle analisi precedenti, qua è l'utente che può decidere di voler osservare dati di piste con asfalto asciutto o bagnato.
+Codice per questa sotto-sezione:
+```
+#dataset raggruppato con tutte le temperature di aria e asfalto rilevate per ogni pista in ogni anno -----v
+data_track_temp=data.group_by("Year", pl.col("GP").alias("Track"), "Date","Track_Condition").agg(pl.col("Track_Temp").mean(), pl.col("Air_Temp").mean()).sort("Year","Track","Track_Condition",descending=False)
+wet_dry=st.selectbox("Inserire condizione di pista desiderata:", ["Dry", "Wet"])
+st.write("Dry: Asciutto, Wet: Bagnato")
+if wet_dry=="Dry":
+    data_track_temp_d=data_track_temp.filter(pl.col("Track_Condition")=="Dry") #dataset con temperature rilevate con pista asciutta
+    trk1, trk2=st.columns(2)
+    trk_list=sorted(data_track_temp_d.select("Track").unique().to_series().to_list())
+    st.session_state.trk_list=trk_list #salvo la lista di tracciati
+    trk_filt=trk1.multiselect("Selezionare pista/e d'interesse:", trk_list, default=trk_list[0])
+    data_track_temp_d_filt=data_track_temp_d.filter(pl.col("Track").is_in(trk_filt))
+    trk_year_list=sorted(data_track_temp_d_filt.select("Year").unique().to_series().to_list())
+    st.session_state.trk_year_list=trk_year_list #salvo la lista di annate (dataset dei tracciati asciutti)
+    year_filt=trk2.slider("Selezionare periodo d'interesse:", min_value=trk_year_list[0], max_value=max(trk_year_list), value=(trk_year_list[0], max(trk_year_list)),key=55)
+    data_track_temp_d_final=data_track_temp_d_filt.filter(pl.col("Year")<=year_filt[1], pl.col("Year")>=year_filt[0])
+    if len(trk_filt)==0:
+        st.write("Selezionare almeno una pista.")
+    else:
+        trk_chart_d_ttemp=alt.Chart(data_track_temp_d_final).mark_line().encode(
+            alt.X("Year"), alt.Y("Track_Temp").scale(zero=False), alt.Color("Track"), alt.Text("Track_Temp")) #grafico temperatura asfalto
+        trk_chart_d_atemp=alt.Chart(data_track_temp_d_final).mark_line().encode(
+            alt.X("Year"), alt.Y("Air_Temp").scale(zero=False), alt.Color("Track"), alt.Text("Air_Temp")) #grafico temperatura aria
+        st.write(data_track_temp_d_final)
+        st.write("**Temperature asfalto**")
+        st.altair_chart(trk_chart_d_ttemp, use_container_width=True)
+        st.write("**Temperature aria**")
+        st.altair_chart(trk_chart_d_atemp, use_container_width=True)
+else:
+    #stessa identica analisi ma con bista bagnata. Alcune variabili, operatori di filtraggio o dataset filtrati avranno la parola w o wet per classificarli come "pista bagnata"
+    data_track_temp_w=data_track_temp.filter(pl.col("Track_Condition")=="Wet")
+    trk1, trk2=st.columns(2)
+    trk_list=sorted(data_track_temp_w.select("Track").unique().to_series().to_list())
+    st.session_state.trk_list=trk_list #salvo la lista circuiti
+    trk_filt=trk1.multiselect("Selezionare pista/e d'interesse:", trk_list, default=trk_list[0])
+    data_track_temp_w_filt=data_track_temp_w.filter(pl.col("Track").is_in(trk_filt))
+    trk_year_list=sorted(data_track_temp_w_filt.select("Year").unique().to_series().to_list())
+    st.session_state.trk_year_list=trk_year_list #salvo la lista annate
+    year_filt=trk2.slider("Selezionare periodo d'interesse:", min_value=trk_year_list[0], max_value=max(trk_year_list), value=(trk_year_list[0], max(trk_year_list)),key=65)
+    data_track_temp_w_final=data_track_temp_w_filt.filter(pl.col("Year")<=year_filt[1], pl.col("Year")>=year_filt[0])
+    if len(trk_filt)==0:
+        st.write("Selezionare almeno una pista.")
+    else:
+        trk_chart_d_ttemp=alt.Chart(data_track_temp_w_final).mark_line().encode(
+            alt.X("Year"), alt.Y("Track_Temp").scale(zero=False), alt.Color("Track"), alt.Text("Track_Temp")) #grafico temperatura asflato
+        trk_chart_d_atemp=alt.Chart(data_track_temp_w_final).mark_line().encode(
+            alt.X("Year"), alt.Y("Air_Temp").scale(zero=False), alt.Color("Track"), alt.Text("Air_Temp")) #grafico temperatura aria
+        st.write(data_track_temp_w_final)
+        st.write("**Temperature asfalto**")
+        st.altair_chart(trk_chart_d_ttemp, use_container_width=True)
+        st.write("**Temperature aria**")
+        st.altair_chart(trk_chart_d_atemp, use_container_width=True)
+```
+### Piste-aeroporti
+Titolo alternativo per un tipo di analisi già svolta, ovvero l'analisi sulle velocità medie. Tutto invariato rispetto a quelle precedenti, solo che in questo caso l'utente dovrà selezionare una pista anziché un costruttore o un pilota.
+Come con l'analisi sulle temperature l'utente potrà decidere se svolgere analisi con piste in condizioni di asfalto asciutto o bagnato.
+Codice per l'esecuzione:
+```
+#dataset con tutte le velocità medie di tutte le pista in tutte le condizioni di ogni anno ----vv
+data_trk_speed=data.group_by("Year",pl.col("GP").alias("Track"),"Category","Track_Condition").agg(pl.col("Avg_Speed").mean().alias("Speed"))
+data_trk_speed=data_trk_speed.with_columns( #dataset con categorie raggruppate
+        pl.when(pl.col("Category").is_in(["125cc","Moto3"])).then(pl.lit("Lightweight")).otherwise(
+            pl.when(pl.col("Category").is_in(["250cc","Moto2"])).then(pl.lit("Middleweight")).otherwise(pl.lit("MotoGP"))
+        ).alias("Cat")
+    ).select("Year", "Track","Cat","Track_Condition","Speed").drop_nulls() #elimino valori nulli e superflui
+wet_dry=st.selectbox("Inserire condizione di pista desiderata", ["Dry", "Wet"], key=69)
+st.write("Dry: Asciutto, Wet: Bagnato")
+if wet_dry=="Dry":
+    d_t_speed_d=data_trk_speed.filter(pl.col("Track_Condition")=="Dry") #dataset di velocità medie con pista asciutta
+    trk_list_2=sorted(d_t_speed_d.select(pl.col("Track").unique()).to_series().to_list())
+    st.session_state.trk_list_2=trk_list_2 #salvo la lista tracciati
+    trk11, trk12=st.columns(2)
+    trk_d_filt=trk11.multiselect("Inserire pista:", trk_list_2,default=trk_list_2[0],key=32) #metto un default per vedere cosa avrò in output
+    if len(trk_d_filt)==0:
+        st.write("Inserire almeno una pista.")
+    else:
+        d_t_speed_d_filt=d_t_speed_d.filter(pl.col("Track").is_in(trk_d_filt)) #dataset filtrato in base ai tracciati
+        t_year_list=sorted(d_t_speed_d_filt.select(pl.col("Year").unique()).to_series().to_list())
+        st.session_state.t_year_list=t_year_list #salvo la lista annate (dataset tracciati)
+        t_year_filt=trk11.slider("Inserire periodo desiderato:", min_value=t_year_list[0], max_value=max(t_year_list), value=(t_year_list[0], max(t_year_list)), key=42)
+        d_t_speed_d_final=d_t_speed_d_filt.filter(pl.col("Year")<=t_year_filt[1], pl.col("Year")>=t_year_filt[0]) #dataset filtrato in base alle annate, dati i tracciati
+        st.write(d_t_speed_d_final.sort("Year", "Cat", descending=False))
+        cat_trk_list=sorted(d_t_speed_d_final.select(pl.col("Cat").unique()).to_series().to_list())
+        st.session_state.cat_trk_list=cat_trk_list #salvo la lista delle categorie (dataset tracciati)
+        st.write("**_Analisi grafica delle velocità:_**")
+        for i in cat_trk_list:
+            d_t_speed_d_final_cat=d_t_speed_d_final.filter(pl.col("Cat")==str(i)) #dataset filtrato per categoria
+            t_speed_chart_d_cat=alt.Chart(d_t_speed_d_final_cat).mark_line().encode(
+                alt.X("Year"), alt.Y("Speed").scale(zero=False), alt.Color("Track"), alt.Text("Speed") #grafico finale di una categoria
+                )
+            st.write(str(i))
+            st.altair_chart(t_speed_chart_d_cat, use_container_width=True)
+else:
+    #stessa identica analisi con condizioni di pista bagnata. Come sempre si sostituiranno nella nomenclatura di operatori di filtraggio, dataset o variabili
+    #le parole d o dry con le parole w o wet. 
+    d_t_speed_w=data_trk_speed.filter(pl.col("Track_Condition")=="Wet")
+    trk_list_2=sorted(d_t_speed_w.select(pl.col("Track").unique()).to_series().to_list())
+    st.session_state.trk_list_2=trk_list_2 #salvo la lista tracciati
+    trk11, trk12=st.columns(2)
+    trk_w_filt=trk11.multiselect("Inserire pista:", trk_list_2,default=trk_list_2[0],key=33)
+    if len(trk_w_filt)==0:
+        st.write("Inserire almeno una pista!")
+    else:
+        d_t_speed_w_filt=d_t_speed_w.filter(pl.col("Track").is_in(trk_w_filt))
+        t_year_list=sorted(d_t_speed_w_filt.select(pl.col("Year").unique()).to_series().to_list())
+        st.session_state.t_year_list=t_year_list #salvo la lista annate (in base al dataset tracciati)
+        t_year_filt=trk11.slider("Inserire periodo desiderato:", min_value=t_year_list[0], max_value=max(t_year_list), value=(t_year_list[0], max(t_year_list)), key=42)
+        d_t_speed_w_final=d_t_speed_w_filt.filter(pl.col("Year")<=t_year_filt[1], pl.col("Year")>=t_year_filt[0]) #dati filtrati in base al periodo
+        st.write(d_t_speed_w_final.sort("Year", "Cat", descending=False))
+        cat_trk_list=sorted(d_t_speed_w_final.select(pl.col("Cat").unique()).to_series().to_list())
+        st.session_state.cat_trk_list=cat_trk_list #salvo la lista categorie (in base al dataset tracciati)
+        st.write("**_Analisi grafica delle velocità con pista bagnata:_**")
+        for i in cat_trk_list:
+            d_t_speed_w_final_cat=d_t_speed_w_final.filter(pl.col("Cat")==str(i)) #dataset filtrato per categoria
+            t_speed_chart_w_cat=alt.Chart(d_t_speed_w_final_cat).mark_line().encode(
+                alt.X("Year"), alt.Y("Speed").scale(zero=False), alt.Color("Track"), alt.Text("Speed") #grafico della velocità media di una singola categoria
+                )
+            st.write(str(i))
+            st.altair_chart(t_speed_chart_w_cat, use_container_width=True)
+```
+## Fonti
+Per la fornitura delle fonti si ringazia Nicholas Bugliari, che nel 2019 pubblicò i dati attraverso [questo sito](https://nbugliar.github.io/Code-Through-Bugliari.html), parente di Github.
+Detto ciò spero sia stato un progetto utile, si ringrazia per l'attenzione e si augura un buon proseguio di giornata a tutti.
