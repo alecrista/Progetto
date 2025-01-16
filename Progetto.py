@@ -167,7 +167,8 @@ if mod==str("Gran Premio - Anno"):
     pd_ytd=pd.DataFrame(dataytd_filt)
     pd_ytd=pd_ytd.rename(columns={0:"TRK",1:"Date"})
     datasort1=pd_ytd.drop_duplicates(subset="TRK").sort_values("Date")
-    trk=st.multiselect("Inserire GP:", datasort1["TRK"].to_list())
+    trk_gp_list=datasort1["TRK"].to_list() #liste di piste per ogni annata
+    trk=st.multiselect("Inserire GP:", trk_gp_list, default=trk_gp_list[0])
     for i in trk:
         st.write(i, year1)
         col11, col12, col13=st.columns(3)
@@ -230,25 +231,7 @@ if len(riders)!=0:
             use_container_width=True
         ) #grafico a linee del dataset filtrato per annata massima
 else:
-    cat_list=sorted(data_rider_points.select(pl.col("Category").unique()).to_series().to_list())
-    category=col112.multiselect("Inserire Categoria desiderata:", cat_list, default=cat_list)
-    d_filt_3=data_rider_points.filter(pl.col("Category").is_in(category))
-    if len(category)!=0:
-        year_list=sorted(d_filt_3.select(pl.col("Year").unique()).to_series().to_list())
-        year=col112.slider("Inserire periodo da analizzare:", min_value=year_list[0], max_value=max(year_list), value=(year_list[0], max(year_list))) #filtraggio per annata massima
-        col111.write(d_filt_3.sort("Year", "Rider_Name", descending=True).filter(pl.col("Year")<=year[1], pl.col("Year")>=year[0]))
-        col112.altair_chart(
-            alt.Chart(d_filt_3.filter(pl.col("Year")<=year[1], pl.col("Year")>=year[0])).mark_line().encode(alt.X("Year"), alt.Y("Points").scale(zero=False)),
-            use_container_width=True
-        )
-    else:
-        year_list=sorted(data_rider_points.select(pl.col("Year").unique()).to_series().to_list())
-        year=col112.slider("Inserire periodo da analizzare:", min_value=year_list[0], max_value=max(year_list), value=(year_list[0], max(year_list))) #filtraggio per annata massima
-        col111.write(data_rider_points.sort("Year", "Rider_Name", descending=True).filter(pl.col("Year")<=year[1], pl.col("Year")>=year[0]))
-        col112.altair_chart(
-            alt.Chart(data_rider_points.filter(pl.col("Year")<=year[1], pl.col("Year")>=year[0])).mark_line().encode(alt.X("Year"), alt.Y("Points").scale(zero=False), alt.Color("Rider_Name")),
-            use_container_width=True
-        )
+    st.write("Inserire almeno un pilota.")
 
 ##
 st.subheader("Piloti e velocità dura e pura")
@@ -416,8 +399,7 @@ cons1, cons2=st.columns(2)
 #In cons1 metterò le opzioni di selezione, in cons2 il dataset filtrato.
 cons_list=sorted(d_cons.select(pl.col("Constructor").unique()).to_series().to_list())
 st.session_state.cons_list=cons_list #salvo la lista dei costruttori
-cons_sel=cons1.multiselect("Inserire costruttore/i di interesse: (Attenzione: se si inserisce solo un costruttore che ha corso per solo un anno il programma darà errore, per cui selezionarne per sicurezza anche uno longevo come Aprilia, Honda, Ducati o Yamaha)",
-                           cons_list, default="Yamaha")
+cons_sel=cons1.multiselect("Inserire costruttore/i di interesse:", cons_list, default="Yamaha")
 if len(cons_sel)==0:
     st.write("Inserire almeno un costruttore.")
 else:
@@ -510,14 +492,14 @@ if wet_dry=="Dry":
     trk_list=sorted(data_track_temp_d.select("Track").unique().to_series().to_list())
     st.session_state.trk_list=trk_list #salvo la lista di tracciati
     trk_filt=trk1.multiselect("Selezionare pista/e d'interesse:", trk_list, default=trk_list[0])
-    data_track_temp_d_filt=data_track_temp_d.filter(pl.col("Track").is_in(trk_filt))
-    trk_year_list=sorted(data_track_temp_d_filt.select("Year").unique().to_series().to_list())
-    st.session_state.trk_year_list=trk_year_list #salvo la lista di annate (dataset dei tracciati asciutti)
-    year_filt=trk2.slider("Selezionare periodo d'interesse:", min_value=trk_year_list[0], max_value=max(trk_year_list), value=(trk_year_list[0], max(trk_year_list)),key=55)
-    data_track_temp_d_final=data_track_temp_d_filt.filter(pl.col("Year")<=year_filt[1], pl.col("Year")>=year_filt[0])
     if len(trk_filt)==0:
         st.write("Selezionare almeno una pista.")
     else:
+        data_track_temp_d_filt=data_track_temp_d.filter(pl.col("Track").is_in(trk_filt))
+        trk_year_list=sorted(data_track_temp_d_filt.select("Year").unique().to_series().to_list())
+        st.session_state.trk_year_list=trk_year_list #salvo la lista di annate (dataset dei tracciati asciutti)
+        year_filt=trk2.slider("Selezionare periodo d'interesse:", min_value=trk_year_list[0], max_value=max(trk_year_list), value=(trk_year_list[0], max(trk_year_list)),key=55)
+        data_track_temp_d_final=data_track_temp_d_filt.filter(pl.col("Year")<=year_filt[1], pl.col("Year")>=year_filt[0])
         trk_chart_d_ttemp=alt.Chart(data_track_temp_d_final).mark_line().encode(
             alt.X("Year"), alt.Y("Track_Temp").scale(zero=False), alt.Color("Track"), alt.Text("Track_Temp")) #grafico temperatura asfalto
         trk_chart_d_atemp=alt.Chart(data_track_temp_d_final).mark_line().encode(
@@ -534,14 +516,14 @@ else:
     trk_list=sorted(data_track_temp_w.select("Track").unique().to_series().to_list())
     st.session_state.trk_list=trk_list #salvo la lista circuiti
     trk_filt=trk1.multiselect("Selezionare pista/e d'interesse:", trk_list, default=trk_list[0])
-    data_track_temp_w_filt=data_track_temp_w.filter(pl.col("Track").is_in(trk_filt))
-    trk_year_list=sorted(data_track_temp_w_filt.select("Year").unique().to_series().to_list())
-    st.session_state.trk_year_list=trk_year_list #salvo la lista annate
-    year_filt=trk2.slider("Selezionare periodo d'interesse:", min_value=trk_year_list[0], max_value=max(trk_year_list), value=(trk_year_list[0], max(trk_year_list)),key=65)
-    data_track_temp_w_final=data_track_temp_w_filt.filter(pl.col("Year")<=year_filt[1], pl.col("Year")>=year_filt[0])
     if len(trk_filt)==0:
         st.write("Selezionare almeno una pista.")
     else:
+        data_track_temp_w_filt=data_track_temp_w.filter(pl.col("Track").is_in(trk_filt))
+        trk_year_list=sorted(data_track_temp_w_filt.select("Year").unique().to_series().to_list())
+        st.session_state.trk_year_list=trk_year_list #salvo la lista annate
+        year_filt=trk2.slider("Selezionare periodo d'interesse:", min_value=trk_year_list[0], max_value=max(trk_year_list), value=(trk_year_list[0], max(trk_year_list)),key=65)
+        data_track_temp_w_final=data_track_temp_w_filt.filter(pl.col("Year")<=year_filt[1], pl.col("Year")>=year_filt[0])
         trk_chart_d_ttemp=alt.Chart(data_track_temp_w_final).mark_line().encode(
             alt.X("Year"), alt.Y("Track_Temp").scale(zero=False), alt.Color("Track"), alt.Text("Track_Temp")) #grafico temperatura asflato
         trk_chart_d_atemp=alt.Chart(data_track_temp_w_final).mark_line().encode(

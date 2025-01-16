@@ -1,8 +1,8 @@
 # DATABASE MOTOMONDIALE 2005-2017: DESCRIZIONE
 Con questo progetto andremo ad analizzare il meglio (e il peggio) del Motomondiale nel periodo 2005-2017. Il database originale lo si può trovare sulla seguente piattaforma:  
 [**Database originale**](https://raw.githubusercontent.com/nbugliar/motogp_regression/master/MotoGP_2005_2017.csv)  
-Le operazioni eseguite, messe insieme, non saranno altro che un'analisi esplorativa, un pochino particolare forse, sui dati di cui dispone il database.  
-Trattandosi di competizioni le principali misure che verranno prese saranno punteggie e velocità, ma ci saranno anche altri dati curiosi da analizzare.
+Le operazioni eseguite, messe insieme, non saranno altro che un'analisi esplorativa sui dati di cui dispone il database.  
+Trattandosi di competizioni le principali misure che verranno prese saranno punteggi e velocità, ma ci saranno anche altri dati curiosi da analizzare.
 Per questo progetto è stata usata la piattaforma Streamlit, importabile come libreria e le altre seguenti librerie:
 ```
 import streamlit as st 
@@ -12,9 +12,13 @@ import datetime as dt #per eseguire operazioni su date
 import pandas as pd #per eseguire operazioni sul dataframe non eseguibili con polars
 import math as mt #per eseguire operazioni di semplice calcolo matematico in caso ce ne fosse bisogno
 ```
+### Piccoli consigli
+**- In quasi tutte le caselle di multiselect del progetto è stato settato un valore di default.**
+**- Nelle caselle multiselect fare in modo che ci sia un unità statistica con un periodo di osservazione prolungato, altrimenti Streamlit darà errore.**
 ### Piccoli problemi inziali
-Il database originale non è perfetto: ho dovuto inizialmente rimuovere i dati inutili, come ad esempio, in caso di gare interrotte dalla bandiera rossa con successiva ripartenza, le classifiche delle gare al momento dell'interruzione. Ai fini della nostra analisi esse sarebbero state inutili, pocihé la classifica finale, in quei casi appunto di ripartenza, è data dall'arrivo della _"seconda"_ gara.  
-Poi ho dovuto aggiungere punteggi mancanti a certi Gran Premi (ad esempio il GP di Repubblica Ceca 2005 classe MotoGP), per motivi ignoti e poi sostituire eventuali doppioni sia tra le case costruttrici che tra i piloti (es. nel database il pilota Dani PEDROSA appariva sia con il nome "Dani PEDROSA " che con il nome "Daniel PEDROSA", quindi il programma lo avrebbe considerato come 2 piloti diversi). Per farlo ho usato il comando:  
+Il database originale non è perfetto: ho dovuto inizialmente rimuovere i dati inutili. 
+Ad esempio, in caso di gare interrotte dalla bandiera rossa con successiva ripartenza, ho rimosso le classifiche delle gare al momento dell'interruzione. Ai fini della nostra analisi esse sarebbero state inutili, pocihé la classifica finale, in quei casi appunto di ripartenza, è data dall'arrivo della _"seconda"_ gara.  
+Poi ho dovuto aggiungere punteggi mancanti per motivi ignoti a certi Gran Premi (ad esempio il GP di Repubblica Ceca 2005 classe MotoGP),  e poi sostituire eventuali doppioni sfasanti sia tra le case costruttrici che tra i piloti (es. nel database il pilota Dani PEDROSA appariva sia con il nome "Dani PEDROSA " che con il nome "Daniel PEDROSA", quindi il programma lo avrebbe considerato come 2 piloti diversi). Per farlo ho usato il comando:  
 ```
 data=data.with_columns(
     pl.col("Rider_Name").str.replace("Daniel PEDROSA","Dani PEDROSA").alias("Rider_Name"),
@@ -93,7 +97,7 @@ data=data.with_columns(
 )
 ```
 ## Introduzione
-Per iniziare era necessario che un utente, passandomi il termine, "ignorante" in questo campo ottenesse giusto un'infarinatura su chi, a livello di successo puro, tra costruttori e piloti, fosse effettivamente stato il migliore, cosicchè ci si trovasse molto meno spaesati di fronte a moli così elevate di dati di cui magari non si conosce niente.  
+Per iniziare era necessario che un utente, passandomi il termine, poco o non informato in questo campo ottenesse giusto un'infarinatura su chi, a livello di successo puro, tra costruttori e piloti, fosse effettivamente stato il migliore, cosicchè ci si trovasse molto meno spaesati di fronte a moli così elevate di dati di cui magari non si conosce niente.  
 Codice per grafici e tabelle in output:  
 ```
 data_wins=data.filter(pl.col("Position")==1) #dataset con tutti i vincitori di tutti i gp
@@ -136,7 +140,7 @@ pod12.altair_chart(pod_cons_chart, use_container_width=True) #grafico delle vitt
 ```
 ## Classifiche generali
 In questa prima sezione l'utente ottiene un'ulteriore infarinatura su ciò che analizzerà, attraverso l'osservazione delle classifiche piloti e costruttori di ciascuna categoria per ciascuna annata.  
-Da notare che la classifica della classe 125cc del 2005 è alterata rispetto alla realtà **a causa dell'assenza**, nel dataset, **dei risultati del GP di Spagna 2005 della categoria stessa.**  
+Da notare che la classifica della classe 125cc del 2005 è alterata rispetto alla realtà **a causa dell'assenza**, nel dataset, **dei risultati del GP di Spagna 2005 della categoria stessa**, sempre per motivi ignoti.  
 A parte questo tutte le altre classfiche non dovrebbero presentare problemi. Ulteriori descrizioni sono presenti nell'interfaccia del progetto, assieme al sistema di punteggio sul quale si basano le classifiche.
 Comandi per la creazione delle classifche:  
 ```
@@ -162,10 +166,10 @@ col2.write(class_costr.drop_nulls())
 ```
 ## Risultati di ogni GP per categoria
 Essendo il database un insieme dei risultati di ogni gara, mi è sembrato giusto sfruttare questa caratteristica per poter rappresentare le classifiche di un gp a scelta dell'utente, un po' come si può fare sul [sito ufficiale della Motogp.](https://www.motogp.com/en/gp-results/2017/val/motogp/rac/classification)  
-Come si può notare tra i risultati sono assenti i ritiri. Questo perché nel contesto dell'analisi che un pilota si ritiri, non corra una gara o e fuori per infortunio comunque egli totalizza zero punti, cosa che all'utente medio, proabilmente, interessa molto molto meno. Ho deciso di conseguenza, anche per difficoltà di programmazione nel farlo, **di non inserirli.**
+Come si può notare tra i risultati sono assenti i ritiri. Questo perché nel contesto dell'analisi che un pilota si ritiri, non corra una gara o sia fuori per infortunio comunque egli totalizza zero punti, cosa che all'utente medio, proabilmente, interessa molto molto meno. Ho deciso di conseguenza, anche per difficoltà nella fase di programmazione, **di non inserirli.**
 ### Chicca
 Come si può vedere, inoltre, ho deciso, siccome in possessione anche delle date di ogni singolo GP nel database, di sfruttare queste informazioni per usare la funzione di Streamlit che permette di giochicchiare con le date.  
-Infatti ho inserito 2 modalità di selezione: **_Gran Premio - Anno_**, dove l'utente inserisce prima un'annnata a scelta e poi uno o più GP di quella annata per scoprirne i risultati per ogni categoria, oppure **_Per data_**, dove l'utente può selezionare una data a sua scelta e vedere, in caso di GP corso in quella data, i risultati di quel GP.
+Infatti ho inserito 2 modalità di selezione del gp: **_Gran Premio - Anno_**, dove l'utente inserisce prima un'annnata a scelta e poi uno o più GP di quella annata per scoprirne i risultati per ogni categoria, oppure **_Per data_**, dove l'utente può selezionare una data a sua scelta e vedere, in caso di GP corso in quella data, i risultati di quel GP, sempre per ogni categoria.
 Ecco il codice usato:
 ```
 mod=st.selectbox("Inserire modalità di filtraggio:", ["Gran Premio - Anno", "Per data"])
@@ -178,7 +182,8 @@ if mod==str("Gran Premio - Anno"):
     pd_ytd=pd.DataFrame(dataytd_filt)
     pd_ytd=pd_ytd.rename(columns={0:"TRK",1:"Date"})
     datasort1=pd_ytd.drop_duplicates(subset="TRK").sort_values("Date")
-    trk=st.multiselect("Inserire GP:", datasort1["TRK"].to_list())
+    trk_gp_list=datasort1["TRK"].to_list() #liste di piste per ogni annata
+    trk=st.multiselect("Inserire GP:", trk_gp_list, default=trk_gp_list[0])
     for i in trk:
         st.write(i, year1)
         col11, col12, col13=st.columns(3)
@@ -206,10 +211,10 @@ elif mod==str("Per data"):
     col13.write(d3) #risultati Moto3/125cc
 ```
 ## Analisi per pilota
-In questa seconda sezione viene semplicemente eseguito il primo vero insieme di operazioni di analisi esplorativa, usando i piloti come unità statistica.
+In questa terza sezione viene semplicemente eseguito il primo vero insieme di operazioni di analisi esplorativa, usando i piloti come unità statistica.
 ### Piloti e punti conquistati
 A questo punto entra in gioco, oltre agli operatori di selezione e conseguente filtraggio, anche la libreria **altair**, utile per svolgere analisi grafiche, usata anche nell'introduzione ma non in maniera interattiva.  
-Si confrontano semplicemente le annate di ciascun pilota in base ai punti conquistati da egli alla fine di ogni campionato. Ovviamente vengono fatte distinzioni anche di categorie e c'è anche la possibilità di selezioanre il periodo che più interessa, attraverso uno slider. Viene quindi raffigurata sulla sinistra la tabella con gli opportuni filtraggi eseguiti dall'utente e sulla destra un grafico a linee utile per comprendere meglio i dati che si stanno osservando.  
+Si confrontano semplicemente le annate di ciascun pilota in base ai punti conquistati da ognuno alla fine di ogni campionato. Ovviamente vengono fatte distinzioni anche di categorie e c'è anche la possibilità di selezioanre il periodo che più interessa, attraverso un range slider. Viene quindi raffigurata sulla sinistra la tabella con gli opportuni filtraggi eseguiti dall'utente e sulla destra un grafico a linee utile per comprendere meglio i dati che si stanno osservando.  
 Questo il codice:  
 ```
 data_rider_points=data.group_by("Rider_Name","Year","Category").agg(pl.col("Points").sum(), pl.col("Bike").implode().list.unique()).sort("Rider_Name", "Year", descending=True)
@@ -240,28 +245,10 @@ if len(riders)!=0:
             use_container_width=True
         ) #grafico a linee del dataset filtrato per annata massima
 else:
-    cat_list=sorted(data_rider_points.select(pl.col("Category").unique()).to_series().to_list())
-    category=col112.multiselect("Inserire Categoria desiderata:", cat_list, default=cat_list)
-    d_filt_3=data_rider_points.filter(pl.col("Category").is_in(category))
-    if len(category)!=0:
-        year_list=sorted(d_filt_3.select(pl.col("Year").unique()).to_series().to_list())
-        year=col112.slider("Inserire periodo da analizzare:", min_value=year_list[0], max_value=max(year_list), value=(year_list[0], max(year_list))) #filtraggio per annata massima
-        col111.write(d_filt_3.sort("Year", "Rider_Name", descending=True).filter(pl.col("Year")<=year[1], pl.col("Year")>=year[0]))
-        col112.altair_chart(
-            alt.Chart(d_filt_3.filter(pl.col("Year")<=year[1], pl.col("Year")>=year[0])).mark_line().encode(alt.X("Year"), alt.Y("Points").scale(zero=False)),
-            use_container_width=True
-        )
-    else:
-        year_list=sorted(data_rider_points.select(pl.col("Year").unique()).to_series().to_list())
-        year=col112.slider("Inserire periodo da analizzare:", min_value=year_list[0], max_value=max(year_list), value=(year_list[0], max(year_list))) #filtraggio per annata massima
-        col111.write(data_rider_points.sort("Year", "Rider_Name", descending=True).filter(pl.col("Year")<=year[1], pl.col("Year")>=year[0]))
-        col112.altair_chart(
-            alt.Chart(data_rider_points.filter(pl.col("Year")<=year[1], pl.col("Year")>=year[0])).mark_line().encode(alt.X("Year"), alt.Y("Points").scale(zero=False), alt.Color("Rider_Name")),
-            use_container_width=True
-        )
+    st.write("Inserire almeno un pilota.")
 ```
 ### Piloti e velocità dura e pura
-In questa sottosezione ho deciso di confrontare le velocità medie di ogni pilota in ogni annata, attraverso la variabile *_Avg_Speed_*, differenziando per condizioni della pista (asciutta o bagnata) e per categoria. Da questo punto in poi notare che la variabile *_Category_* verrà riassunta sempre nella variabile *_Cat_*, che riunisce le classi 125cc e Moto3 nella categoria Lightweight e le classi 250cc e Moto2 nella categoria Middleweight (Moto2 e Moto3 sono le sostitute con motori 4 tempi rispettivamente di 250cc e 125cc con motori a 2 tempi).
+In questa sottosezione ho deciso di confrontare le velocità medie di ogni pilota in ogni annata, attraverso la variabile *_Avg_Speed_*, differenziando per condizioni della pista (asciutta o bagnata) e per categoria. Da questo punto in poi notare che la variabile *_Category_* verrà riassunta sempre nella variabile *_Cat_*, che riunisce le classi 125cc e Moto3 nella categoria Lightweight e le classi 250cc e Moto2 nella categoria Middleweight (Moto2 e Moto3 sono le sostitute con motori a 4 tempi rispettivamente di 250cc e 125cc con motori a 2 tempi).
 Le parti ad interazione sono state precedute da piccole pre-analisi generali di tutti i dati di velocità media differenziati per categoria e condizioni di pista.
 Questo il codice usato:
 ```
@@ -369,7 +356,7 @@ else:
                 use_container_width=True)
 ```
 ### Piloti e numeri di gara
-Questa è un'analisi più inutile ma comunque curiosa, svolta per sfuttare più variabili da anlizzare, essendo il dataset colmo di esse. Non è altro che un'analisi sul rapporto tra piloti e numeri di gara appiccicati dulle carene delle loro moto, dove si vede prima che piloti hanno corso con un numero scelto dall'utente e poi con che numeri ha corso un pilota scelto dall'utente.
+Questa è un'analisi più inutile ma comunque altrettanto curiosa, svolta per sfuttare un po' il maggior numero di variabili possibile, essendo il dataset colmo di esse. Non è altro che un'analisi sul rapporto tra piloti e numeri di gara appiccicati sulle carene delle loro moto, dove si vede prima che piloti hanno corso con un numero scelto dall'utente e poi con che numeri ha corso un pilota scelto dall'utente, ovvero l'operazione inversa.
 Tutto questo seguendo la logica di tale codice:
 ```
 rid_numbers=sorted(data.select(pl.col("Rider_Number").unique()).drop_nulls().to_series().to_list())
@@ -398,10 +385,9 @@ num11.write(d_rid_num_2.sort(pl.col("N_races"), descending=True))
 num12.altair_chart(rid_chart, use_container_width=True)
 ```
 ## Analisi per costruttore
-Vengono svolte le stesse analisi che vengono svolte sui piloti, solo in maniera leggermente diversa.
+Vengono svolte le stesse analisi che vengono svolte sui piloti, solo in maniera leggermente diversa e soprattutto cambiando unità statistica.
 ### Costruttori e punti medi
-L'utente inserisce uno o più costruttori, una o più categorie e un periodo temporale a sua scelta e l'output saranno una tabella con rapprsentati i punteggi medi di ogni costruttore selezionato in ogni categoria selezionata per ogni anno e la sua rappresentazione grafica.  
-**Non l'ho specificato prima, lo specifico adesso: in quasi tutti i multiselect del progetto è stato settato un valore di default.**
+L'utente inserisce uno o più costruttori, una o più categorie e un periodo temporale a sua scelta e l'output saranno una tabella con rapprsentati i punteggi medi di ogni costruttore selezionato in ogni categoria selezionata per ogni anno del range scelto e la rappresentazione grafica più adeguata del complesso.  
 Comandi per ottenere l'output:
 ```
 data_cons=data.group_by("Year",pl.col("Bike").alias("Constructor"),"Category").agg(pl.col("Points").mean()).sort("Year","Constructor", descending=False) #Mi creo il dataset su cui far partire l'analisi
@@ -417,8 +403,7 @@ cons1, cons2=st.columns(2)
 #In cons1 metterò le opzioni di selezione, in cons2 il dataset filtrato.
 cons_list=sorted(d_cons.select(pl.col("Constructor").unique()).to_series().to_list())
 st.session_state.cons_list=cons_list #salvo la lista dei costruttori
-cons_sel=cons1.multiselect("Inserire costruttore/i di interesse: (Attenzione: se si inserisce solo un costruttore che ha corso per solo un anno il programma darà errore, per cui selezionarne per sicurezza anche uno longevo come Aprilia, Honda, Ducati o Yamaha)",
-                           cons_list, default="Yamaha")
+cons_sel=cons1.multiselect("Inserire costruttore/i di interesse:, cons_list, default="Yamaha")
 if len(cons_sel)==0:
     st.write("Inserire almeno un costruttore.")
 else:
@@ -446,7 +431,7 @@ else:
         st.write("Per il confronto grafico selezionare almeno una categoria")
 ```
 ### Costruttori e velocità medie
-Identica analisi fatta con i piloti, quindi con distinzione tra categorie e condizioni della pista, solo fatta con i costruttori. L'input, come con i piloti, sono categoria, periodo temporale e anzichè pilota/i, appunto, costruttore.
+Questa è un'analisi simile a quella fatta con le velocità dei piloti, con la sola distinzione tra categorie, fatta con i costruttori. L'input, come con i piloti, sono categoria, periodo temporale e anzichè pilota/i, appunto, costruttore/i.
 Codice di esecuzione del programma:
 ```
 data_cons_speed=data.group_by("Year",pl.col("Bike").alias("Constructor"),"Category").agg(pl.col("Avg_Speed").alias("Speed").mean().round(3) #arrotondo alla terza cifra
@@ -491,7 +476,9 @@ else:
         st.write("Per il confronto grafico selezionare almeno una categoria.")
 ```
 ## Analisi per tracciato
-L'ultima sezione prende le piste su cui si è corso come unità statistica. Le analisi svolte saranno su temperature medie e velocità, che non deve mai mancare.
+L'ultima sezione prende le piste su cui si è corso come unità statistica. Le analisi svolte saranno su temperature medie e velocità, che non deve mai mancare (_*"I believe in speed and power." ~ Jeremy Clarkson*_).
+**ATTENZIONE, SCOPERTO PROBLEMA: NEL CODICE SI NOTERA' COME SIA IMPOSTATO UN OUTPUT QUANDO LA CASELLA MULTISELECT E' VUOTA. NONOSTANTE CIO' STREAMLIT DARA' QUESTO ERRORE:**
+
 ### Ohi, que calor!
 Il titolo, per quanto bizzarro, riflette il fulcro di questa analisi, ovvero il rapporto tra piste, temperature dell'aria e temperature dell'asfalto misurate, senza contare troppo sul periodo dell'anno in cui si è corso ma tenendo conto delle condizioni della pista (asciutta o bagnata).  
 L'utente metterà in input una o più piste su cui si è corso un determinato periodo temporale e l'output saranno la classica tabella dei dati filtrati con l'aggiunta anche della data di rilevazione (così magari l'utente si fa un'idea più chiara del perché di eventuali valori anomali rilevati) e la rappresentazione grafica di temperature dell'aria e dell'asfalto.  
@@ -508,14 +495,14 @@ if wet_dry=="Dry":
     trk_list=sorted(data_track_temp_d.select("Track").unique().to_series().to_list())
     st.session_state.trk_list=trk_list #salvo la lista di tracciati
     trk_filt=trk1.multiselect("Selezionare pista/e d'interesse:", trk_list, default=trk_list[0])
-    data_track_temp_d_filt=data_track_temp_d.filter(pl.col("Track").is_in(trk_filt))
-    trk_year_list=sorted(data_track_temp_d_filt.select("Year").unique().to_series().to_list())
-    st.session_state.trk_year_list=trk_year_list #salvo la lista di annate (dataset dei tracciati asciutti)
-    year_filt=trk2.slider("Selezionare periodo d'interesse:", min_value=trk_year_list[0], max_value=max(trk_year_list), value=(trk_year_list[0], max(trk_year_list)),key=55)
-    data_track_temp_d_final=data_track_temp_d_filt.filter(pl.col("Year")<=year_filt[1], pl.col("Year")>=year_filt[0])
     if len(trk_filt)==0:
         st.write("Selezionare almeno una pista.")
     else:
+        data_track_temp_d_filt=data_track_temp_d.filter(pl.col("Track").is_in(trk_filt))
+        trk_year_list=sorted(data_track_temp_d_filt.select("Year").unique().to_series().to_list())
+        st.session_state.trk_year_list=trk_year_list #salvo la lista di annate (dataset dei tracciati asciutti)
+        year_filt=trk2.slider("Selezionare periodo d'interesse:", min_value=trk_year_list[0], max_value=max(trk_year_list), value=(trk_year_list[0], max(trk_year_list)),key=55)
+        data_track_temp_d_final=data_track_temp_d_filt.filter(pl.col("Year")<=year_filt[1], pl.col("Year")>=year_filt[0])
         trk_chart_d_ttemp=alt.Chart(data_track_temp_d_final).mark_line().encode(
             alt.X("Year"), alt.Y("Track_Temp").scale(zero=False), alt.Color("Track"), alt.Text("Track_Temp")) #grafico temperatura asfalto
         trk_chart_d_atemp=alt.Chart(data_track_temp_d_final).mark_line().encode(
@@ -532,14 +519,14 @@ else:
     trk_list=sorted(data_track_temp_w.select("Track").unique().to_series().to_list())
     st.session_state.trk_list=trk_list #salvo la lista circuiti
     trk_filt=trk1.multiselect("Selezionare pista/e d'interesse:", trk_list, default=trk_list[0])
-    data_track_temp_w_filt=data_track_temp_w.filter(pl.col("Track").is_in(trk_filt))
-    trk_year_list=sorted(data_track_temp_w_filt.select("Year").unique().to_series().to_list())
-    st.session_state.trk_year_list=trk_year_list #salvo la lista annate
-    year_filt=trk2.slider("Selezionare periodo d'interesse:", min_value=trk_year_list[0], max_value=max(trk_year_list), value=(trk_year_list[0], max(trk_year_list)),key=65)
-    data_track_temp_w_final=data_track_temp_w_filt.filter(pl.col("Year")<=year_filt[1], pl.col("Year")>=year_filt[0])
     if len(trk_filt)==0:
         st.write("Selezionare almeno una pista.")
     else:
+        data_track_temp_w_filt=data_track_temp_w.filter(pl.col("Track").is_in(trk_filt))
+        trk_year_list=sorted(data_track_temp_w_filt.select("Year").unique().to_series().to_list())
+        st.session_state.trk_year_list=trk_year_list #salvo la lista annate
+        year_filt=trk2.slider("Selezionare periodo d'interesse:", min_value=trk_year_list[0], max_value=max(trk_year_list), value=(trk_year_list[0], max(trk_year_list)),key=65)
+        data_track_temp_w_final=data_track_temp_w_filt.filter(pl.col("Year")<=year_filt[1], pl.col("Year")>=year_filt[0])
         trk_chart_d_ttemp=alt.Chart(data_track_temp_w_final).mark_line().encode(
             alt.X("Year"), alt.Y("Track_Temp").scale(zero=False), alt.Color("Track"), alt.Text("Track_Temp")) #grafico temperatura asflato
         trk_chart_d_atemp=alt.Chart(data_track_temp_w_final).mark_line().encode(
@@ -618,5 +605,5 @@ else:
             st.altair_chart(t_speed_chart_w_cat, use_container_width=True)
 ```
 ## Fonti
-Per la fornitura delle fonti si ringazia Nicholas Bugliari, che nel 2019 pubblicò i dati attraverso [questo sito](https://nbugliar.github.io/Code-Through-Bugliari.html), parente di Github.
-Detto ciò spero sia stato un progetto utile, si ringrazia per l'attenzione e si augura un buon proseguio di giornata a tutti.
+Per la fornitura delle fonti si ringazia Nicholas Bugliari, che nel 2019 pubblicò i dati attraverso [questo "codice" html](https://nbugliar.github.io/Code-Through-Bugliari.html), facente parte di un repository Github chiamato [nbugliar.github.io](https://github.com/nbugliar/nbugliar.github.io), proprietà dello stesso Bugliari.
+Detto ciò spero sia stato un progetto utile, ringrazio per l'attenzione e auguro un buon proseguio di giornata.
